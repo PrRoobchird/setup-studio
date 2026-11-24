@@ -1,0 +1,6 @@
+{
+  "name": "Born to be Art: Dream Studio",
+  "description": "เกมแนว Tycoon & Studio Builder สำหรับนักเรียนสายศิลปะและการออกแบบ ตกแต่งสตูดิโอในฝัน ส่งผลงานจริงให้พี่ติวเตอร์ AI ตรวจ และทำควิซเตรียมสอบ TCAS",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
