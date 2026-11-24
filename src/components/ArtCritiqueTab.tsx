@@ -1,8 +1,10 @@
 import React, { useRef, useState } from 'react';
 import {
+  AlertTriangle,
   BookOpen,
   Camera,
   CheckCircle2,
+  ClipboardList,
   Coins,
   ImagePlus,
   Lightbulb,
@@ -10,6 +12,7 @@ import {
   MessageSquareHeart,
   Sparkles,
   Star,
+  ThumbsUp,
   Upload,
   X,
 } from 'lucide-react';
@@ -29,18 +32,91 @@ const ART_CATEGORIES: ArtCategory[] = [
   'ทฤษฎีสี/องค์ประกอบศิลป์',
 ];
 
-const SAMPLE_ARTWORKS: { label: string; category: ArtCategory; url: string }[] = [
+const SAMPLE_ARTWORKS: {
+  label: string;
+  category: ArtCategory;
+  url: string;
+  sampleBrief: string;
+}[] = [
   {
     label: 'สเก็ตช์ศาลาไม้ (สถาปัตย์)',
     category: 'สถาปัตยกรรม',
     url: '/src/assets/images/art_sketch_arch_1795454543369.jpg',
+    sampleBrief:
+      'ออกแบบและสเก็ตช์ Perspective 2 จุด ของศาลาพักผ่อนไม้สไตล์โมเดิร์นในสวน ใช้ปากกาตัดเส้นร่วมกับการลงน้ำหนักมาร์คเกอร์โทนเทา พร้อมใส่สเกลคนและองค์ประกอบต้นไม้เพื่อบอกขนาดอาคาร',
   },
   {
     label: 'หุ่นนิ่งแสงเงา (Drawing)',
     category: 'วาดเส้น Drawing',
     url: '/src/assets/images/art_charcoal_stilllife_1795454545851.jpg',
+    sampleBrief:
+      'วาดเส้น Drawing หุ่นนิ่งบนกระดาษด้วยดินสอ EE/ชาร์โคล เน้นการขึ้นโครงสร้างสัดส่วนเรขาคณิตให้แม่นยำ แยกค่าน้ำหนักแสง-เงา 5 ระดับ และแสดงพื้นผิววัสดุให้ชัดเจน',
   },
 ];
+
+function getStarTierLabel(stars: number): { label: string; toneClass: string } {
+  if (stars >= 10) {
+    return {
+      label: 'ระดับ 10 ดาว · สมบูรณ์แบบไร้ที่ติ (หายากที่สุด)',
+      toneClass: 'bg-[#FEF3C7] text-[#92400E] border-[#F59E0B]',
+    };
+  }
+  if (stars >= 9) {
+    return {
+      label: 'ระดับหัวกะทิ · โดดเด่นพร้อมยื่นพอร์ตระดับท็อป',
+      toneClass: 'bg-[#ECFDF5] text-[#065F46] border-[#10B981]',
+    };
+  }
+  if (stars >= 8) {
+    return {
+      label: 'ดีมาก · ตรงโจทย์และคุมฝีมือได้ดี พร้อมใช้ลงพอร์ต',
+      toneClass: 'bg-[#ECFDF5] text-[#065F46] border-[#A7F3D0]',
+    };
+  }
+  if (stars >= 6) {
+    return {
+      label: 'มาตรฐาน ม.ปลาย · พอใช้ได้ ต้องเกลาจุดด้อยเพิ่ม',
+      toneClass: 'bg-[#EFF6FF] text-[#1E3A8A] border-[#BFDBFE]',
+    };
+  }
+  if (stars >= 4) {
+    return {
+      label: 'ระดับฝึกหัด · ยังไม่ผ่านเกณฑ์พอร์ต ควรแก้ตามคอมเมนต์',
+      toneClass: 'bg-[#FFFBEB] text-[#92400E] border-[#FDE68A]',
+    };
+  }
+  if (stars >= 1) {
+    return {
+      label: 'ต้องปรับปรุงด่วน · หลุดโจทย์หรือมีจุดบกพร่องหลายจุด',
+      toneClass: 'bg-[#FFF1F2] text-[#9F1239] border-[#FECDD3]',
+    };
+  }
+  return {
+    label: '0 ดาว · ไม่ตรงโจทย์หรืองานยังไม่สมบูรณ์',
+    toneClass: 'bg-[#FFF1F2] text-[#9F1239] border-[#FDA4AF]',
+  };
+}
+
+function renderStarRow(stars: number, sizeClass = 'w-4 h-4') {
+  const clamped = Math.min(10, Math.max(0, Math.round(stars)));
+  return (
+    <div className="flex items-center gap-0.5 flex-wrap" aria-label={`คะแนน ${clamped} จาก 10 ดาว`}>
+      {Array.from({ length: 10 }, (_, idx) => {
+        const filled = idx < clamped;
+        return (
+          <Star
+            key={idx}
+            className={`${sizeClass} ${
+              filled
+                ? 'fill-[#F59E0B] text-[#D97706]'
+                : 'fill-transparent text-[#D6CCB9]'
+            }`}
+          />
+        );
+      })}
+    </div>
+  );
+}
 
 export const ArtCritiqueTab: React.FC<ArtCritiqueTabProps> = ({
   studentTrack,
@@ -48,7 +124,7 @@ export const ArtCritiqueTab: React.FC<ArtCritiqueTabProps> = ({
   onClaimCritique,
 }) => {
   const [category, setCategory] = useState<ArtCategory>('วาดเส้น Drawing');
-  const [note, setNote] = useState('');
+  const [assignmentBrief, setAssignmentBrief] = useState('');
   const [previewImage, setPreviewImage] = useState<CompressedImage | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -80,6 +156,9 @@ export const ArtCritiqueTab: React.FC<ArtCritiqueTabProps> = ({
     setCritiqueResult(null);
     setClaimed(false);
     setCategory(sample.category);
+    if (!assignmentBrief.trim()) {
+      setAssignmentBrief(sample.sampleBrief);
+    }
     try {
       const compressed = await imageUrlToCompressed(sample.url, 1024);
       setPreviewImage(compressed);
@@ -93,6 +172,11 @@ export const ArtCritiqueTab: React.FC<ArtCritiqueTabProps> = ({
       setErrorMsg('เลือกรูปหรือถ่ายภาพผลงานของน้องก่อนส่งตรวจนะ');
       return;
     }
+    if (!assignmentBrief.trim()) {
+      setErrorMsg('กรุณากรอก "โจทย์งานอย่างละเอียด" ก่อนส่งตรวจ เพื่อให้พี่ติวประเมินคะแนน 0–10 ดาวตามโจทย์ได้แม่นยำ');
+      return;
+    }
+
     setIsAnalyzing(true);
     setErrorMsg(null);
     setCritiqueResult(null);
@@ -106,7 +190,7 @@ export const ArtCritiqueTab: React.FC<ArtCritiqueTabProps> = ({
           imageBase64: previewImage.base64,
           mimeType: previewImage.mimeType,
           category,
-          note: note.trim(),
+          assignmentBrief: assignmentBrief.trim(),
           studentTrack,
         }),
       });
@@ -144,7 +228,7 @@ export const ArtCritiqueTab: React.FC<ArtCritiqueTabProps> = ({
       id: `art-${Date.now()}`,
       imageDataUrl: previewImage.dataUrl,
       category,
-      note: note.trim() || undefined,
+      assignmentBrief: assignmentBrief.trim(),
       createdAt: new Date().toLocaleDateString('th-TH', {
         day: 'numeric',
         month: 'short',
@@ -160,9 +244,11 @@ export const ArtCritiqueTab: React.FC<ArtCritiqueTabProps> = ({
     setPreviewImage(null);
     setCritiqueResult(null);
     setClaimed(false);
-    setNote('');
     setErrorMsg(null);
   };
+
+  const resultStars = critiqueResult ? critiqueResult.starRating : 0;
+  const tierInfo = getStarTierLabel(resultStars);
 
   return (
     <div className="space-y-8">
@@ -171,10 +257,10 @@ export const ArtCritiqueTab: React.FC<ArtCritiqueTabProps> = ({
         <section className="lg:col-span-6 bg-white border border-[#E7E1D6] rounded-2xl p-5 sm:p-6 space-y-5">
           <div>
             <h1 className="text-lg sm:text-xl font-semibold text-[#1F1D1A]">
-              ส่งผลงานจริงให้พี่ติวเตอร์ตรวจ
+              ส่งผลงานจริงให้พี่ติวเตอร์ประเมิน (0–10 ดาว)
             </h1>
             <p className="text-xs sm:text-sm text-[#6E675F] mt-1">
-              ถ่ายภาพงานวาดเส้น สเก็ตช์ หรือโปสเตอร์ที่ทำในคลาส พี่ติวเตอร์ AI จะช่วยคอมเมนต์และแจก Idea Coins ให้ไปแต่งห้อง!
+              พี่ติวจะตรวจเทียบกับโจทย์และมาตรฐานเด็ก ม.ปลาย เข้าคณะศิลปะ/ออกแบบยุคปัจจุบันแบบตรงไปตรงมา ไม่อวย พร้อมบอกทั้งข้อดีและข้อด้อยเพื่อพัฒนาต่อ
             </p>
           </div>
 
@@ -268,10 +354,10 @@ export const ArtCritiqueTab: React.FC<ArtCritiqueTabProps> = ({
                   </button>
                 </div>
 
-                {/* Quick sample artworks for easy desktop testing */}
+                {/* Quick sample artworks */}
                 <div className="pt-3 border-t border-[#EAE3D5]">
                   <p className="text-xs text-[#6E675F] mb-2">
-                    ยังไม่มีรูปในเครื่อง? ลองส่งภาพสเก็ตช์ตัวอย่างให้ AI ตรวจจริงได้เลย:
+                    ยังไม่มีรูปในเครื่อง? ทดลองส่งภาพตัวอย่างพร้อมโจทย์ได้เลย:
                   </p>
                   <div className="flex flex-wrap items-center justify-center gap-2">
                     {SAMPLE_ARTWORKS.map((sample) => (
@@ -290,19 +376,29 @@ export const ArtCritiqueTab: React.FC<ArtCritiqueTabProps> = ({
             )}
           </div>
 
-          {/* Optional Student Note */}
+          {/* Detailed Assignment Brief (Required for 0-10 Star Rating) */}
           <div className="space-y-1.5">
-            <label htmlFor="art-note" className="block text-xs font-medium text-[#6E675F]">
-              ข้อความถึงพี่ติวเตอร์ (ไม่บังคับ)
+            <label
+              htmlFor="assignment-brief"
+              className="flex items-center justify-between gap-2 text-xs font-semibold text-[#1F1D1A]"
+            >
+              <span className="inline-flex items-center gap-1.5">
+                <ClipboardList className="w-4 h-4 text-[#2563EB]" />
+                โจทย์งานอย่างละเอียด (อ้างอิงเกณฑ์ให้คะแนน 0–10 ดาว)
+              </span>
+              <span className="text-[11px] font-normal text-[#BE123C]">*จำเป็นต้องระบุ</span>
             </label>
-            <input
-              id="art-note"
-              type="text"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="เช่น ฝึกแรเงาแสงเงาชิ้นแรก อยากให้ช่วยดูสัดส่วนครับ"
-              className="w-full px-3.5 py-2.5 min-h-[44px] rounded-xl bg-[#FAF8F4] border border-[#E7E1D6] text-sm text-[#1F1D1A] placeholder:text-[#9C948A] focus:outline-none focus:border-[#2563EB]"
+            <textarea
+              id="assignment-brief"
+              rows={4}
+              value={assignmentBrief}
+              onChange={(e) => setAssignmentBrief(e.target.value)}
+              placeholder="ระบุรายละเอียดโจทย์ให้ครบ เช่น หัวข้อ/คอนเซปต์, องค์ประกอบที่โจทย์บังคับต้องมี, เทคนิค/วัสดุที่ใช้ (เช่น ดินสอ EE, สีน้ำ, โคปิก), และเป้าหมายระดับสอบเข้า..."
+              className="w-full px-3.5 py-2.5 rounded-xl bg-[#FAF8F4] border border-[#E7E1D6] text-sm text-[#1F1D1A] placeholder:text-[#9C948A] focus:outline-none focus:border-[#2563EB] leading-relaxed"
             />
+            <p className="text-[11px] text-[#6E675F]">
+              ยิ่งใส่โจทย์ละเอียด พี่ติวจะยิ่งตรวจเช็กความตรงโจทย์ ข้อดี และข้อด้อยได้แม่นยำ (คะแนน 10 ดาวต้องสมบูรณ์แบบไร้ที่ติทั้งฝีมือและตรงโจทย์ 100%)
+            </p>
           </div>
 
           {errorMsg && (
@@ -320,63 +416,101 @@ export const ArtCritiqueTab: React.FC<ArtCritiqueTabProps> = ({
             {isAnalyzing ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                พี่ติวเตอร์กำลังส่องผลงานน้องอยู่น้า...
+                พี่ติวเตอร์กำลังตรวจเช็กเทียบโจทย์และให้คะแนน...
               </>
             ) : (
               <>
                 <Sparkles className="w-4 h-4 text-[#FBBF24]" />
-                ส่งงานให้พี่ติวเตอร์ตรวจเลย
+                ส่งงานให้พี่ติวเตอร์ตรวจตามโจทย์
               </>
             )}
           </button>
         </section>
 
-        {/* Right Column: Tutor Critique Result Card */}
+        {/* Right Column: Strict Tutor Critique Result Card */}
         <section className="lg:col-span-6">
           {critiqueResult ? (
             <div className="bg-white border border-[#E7E1D6] rounded-2xl p-5 sm:p-6 space-y-5">
-              <div className="flex flex-wrap items-center justify-between gap-3 pb-4 border-b border-[#F1ECE2]">
-                <div>
-                  <p className="text-xs font-medium text-[#2563EB]">
-                    ผลการตรวจจากพี่ติวเตอร์ Born to be Art
-                  </p>
-                  <h2 className="text-lg font-semibold text-[#1F1D1A] mt-0.5">
-                    ตรวจผลงานเสร็จแล้วจ้า!
-                  </h2>
-                </div>
-                <div className="flex items-center gap-4 font-mono-num">
-                  <div className="text-right">
-                    <div className="text-[11px] text-[#6E675F]">Idea Coins</div>
-                    <div className="text-lg font-bold text-[#D97706] flex items-center gap-1">
-                      <Coins className="w-4 h-4" />+{critiqueResult.coinsEarned}
+              {/* Top Scoreboard: 0-10 Stars + Rewards */}
+              <div className="space-y-3 pb-4 border-b border-[#F1ECE2]">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-medium text-[#2563EB]">
+                      ผลประเมินเทียบมาตรฐานพอร์ต ม.ปลาย เข้ามหาวิทยาลัย
+                    </p>
+                    <h2 className="text-lg font-semibold text-[#1F1D1A] mt-0.5">
+                      ผลการตรวจจากพี่ติวเตอร์
+                    </h2>
+                  </div>
+                  <div className="flex items-center gap-3 font-mono-num">
+                    <div className="text-right">
+                      <div className="text-[11px] text-[#6E675F]">Idea Coins</div>
+                      <div className="text-base sm:text-lg font-bold text-[#D97706] flex items-center gap-1">
+                        <Coins className="w-4 h-4" />+{critiqueResult.coinsEarned}
+                      </div>
+                    </div>
+                    <div className="h-8 w-px bg-[#ECE6DA]" />
+                    <div className="text-right">
+                      <div className="text-[11px] text-[#6E675F]">Studio Fame</div>
+                      <div className="text-base sm:text-lg font-bold text-[#2D6A4F] flex items-center gap-1">
+                        <Star className="w-4 h-4" />+{critiqueResult.fameEarned}
+                      </div>
                     </div>
                   </div>
-                  <div className="h-8 w-px bg-[#ECE6DA]" />
-                  <div className="text-right">
-                    <div className="text-[11px] text-[#6E675F]">Studio Fame</div>
-                    <div className="text-lg font-bold text-[#2D6A4F] flex items-center gap-1">
-                      <Star className="w-4 h-4" />+{critiqueResult.fameEarned}
-                    </div>
+                </div>
+
+                {/* 0-10 Star Bar */}
+                <div className="p-4 rounded-2xl bg-[#FAF8F4] border border-[#E7E1D6] space-y-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-xs font-semibold text-[#6E675F]">
+                      คะแนนประเมินผลงาน (0–10 ดาว)
+                    </span>
+                    <span className="font-mono-num text-xl font-bold text-[#1F1D1A]">
+                      {resultStars} <span className="text-sm font-normal text-[#6E675F]">/ 10 ดาว</span>
+                    </span>
+                  </div>
+                  {renderStarRow(resultStars, 'w-5 h-5')}
+                  <div
+                    className={`inline-block mt-1 px-2.5 py-1 rounded-lg border text-xs font-medium ${tierInfo.toneClass}`}
+                  >
+                    {tierInfo.label}
                   </div>
                 </div>
+
+                {assignmentBrief.trim() && (
+                  <div className="p-3 rounded-xl bg-[#F8F6F2] border border-[#ECE6DA] text-xs text-[#6E675F]">
+                    <span className="font-semibold text-[#1F1D1A]">โจทย์ที่ใช้ประเมิน: </span>
+                    {assignmentBrief}
+                  </div>
+                )}
               </div>
 
-              {/* 3 Structured Critique Insights */}
-              <div className="space-y-3.5">
-                <div className="p-4 rounded-xl bg-[#FAF8F4] border border-[#EAE3D5]">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-[#2D6A4F] mb-1.5">
-                    <MessageSquareHeart className="w-4 h-4" />
-                    จุดเด่นที่พี่ติวเตอร์ประทับใจ
+              {/* 4 Honest Critique Insights: Strengths, Weaknesses, Action Plan, Admission Standard */}
+              <div className="space-y-3">
+                <div className="p-4 rounded-xl bg-[#ECFDF5]/60 border border-[#A7F3D0]">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-[#065F46] mb-1.5">
+                    <ThumbsUp className="w-4 h-4" />
+                    ข้อดีของชิ้นงาน (จุดที่ทำได้ตามเกณฑ์)
                   </div>
                   <p className="text-sm text-[#1F1D1A] leading-relaxed">
                     {critiqueResult.compliment}
                   </p>
                 </div>
 
-                <div className="p-4 rounded-xl bg-[#FAF8F4] border border-[#EAE3D5]">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-[#2563EB] mb-1.5">
+                <div className="p-4 rounded-xl bg-[#FFF1F2]/75 border border-[#FECDD3]">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-[#BE123C] mb-1.5">
+                    <AlertTriangle className="w-4 h-4" />
+                    ข้อด้อย & จุดบกพร่องที่ต้องแก้ไข (ตรวจตามจริง)
+                  </div>
+                  <p className="text-sm text-[#1F1D1A] leading-relaxed">
+                    {critiqueResult.weaknesses}
+                  </p>
+                </div>
+
+                <div className="p-4 rounded-xl bg-[#EFF6FF]/70 border border-[#BFDBFE]">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-[#1E40AF] mb-1.5">
                     <Lightbulb className="w-4 h-4" />
-                    ทริคแนะนำสำหรับชิ้นถัดไป
+                    แนวทางแก้ไขเพื่อพัฒนาชิ้นงานต่ออย่างถูกต้อง
                   </div>
                   <p className="text-sm text-[#1F1D1A] leading-relaxed">
                     {critiqueResult.advice}
@@ -384,9 +518,9 @@ export const ArtCritiqueTab: React.FC<ArtCritiqueTabProps> = ({
                 </div>
 
                 <div className="p-4 rounded-xl bg-[#FAF8F4] border border-[#EAE3D5]">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-[#D97706] mb-1.5">
+                  <div className="flex items-center gap-2 text-xs font-semibold text-[#B45309] mb-1.5">
                     <BookOpen className="w-4 h-4" />
-                    เกร็ดศิลปะและแรงบันดาลใจ
+                    มุมมองมาตรฐานพอร์ตเข้ามหาวิทยาลัยปัจจุบัน
                   </div>
                   <p className="text-sm text-[#1F1D1A] leading-relaxed">
                     {critiqueResult.designTip}
@@ -398,7 +532,7 @@ export const ArtCritiqueTab: React.FC<ArtCritiqueTabProps> = ({
                 <div className="space-y-3">
                   <div className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-[#ECFDF5] border border-[#A7F3D0] text-sm font-medium text-[#065F46]">
                     <CheckCircle2 className="w-4 h-4" />
-                    รับเหรียญเข้ากระเป๋าและบันทึกลงแกลเลอรีเรียบร้อย!
+                    บันทึกคะแนน {resultStars}/10 ดาว และรับเหรียญเข้าคลังเรียบร้อย!
                   </div>
                   <button
                     type="button"
@@ -415,7 +549,7 @@ export const ArtCritiqueTab: React.FC<ArtCritiqueTabProps> = ({
                   className="w-full inline-flex items-center justify-center gap-2 py-3 px-5 min-h-[48px] rounded-xl bg-[#2563EB] text-white text-sm font-medium hover:bg-[#1D4ED8] active:scale-[0.98] transition-all cursor-pointer"
                 >
                   <Coins className="w-4 h-4" />
-                  รับ {critiqueResult.coinsEarned} Idea Coins & บันทึกลงแกลเลอรี
+                  รับ {critiqueResult.coinsEarned} Idea Coins & บันทึกผลตรวจลงแกลเลอรี
                 </button>
               )}
             </div>
@@ -424,16 +558,19 @@ export const ArtCritiqueTab: React.FC<ArtCritiqueTabProps> = ({
               <div className="w-14 h-14 rounded-2xl bg-[#FAF8F4] border border-[#EAE3D5] flex items-center justify-center mx-auto text-[#D97706]">
                 <MessageSquareHeart className="w-7 h-7" />
               </div>
-              <div className="max-w-sm mx-auto space-y-1.5">
+              <div className="max-w-md mx-auto space-y-2">
                 <h2 className="text-base font-semibold text-[#1F1D1A]">
-                  การ์ดคอมเมนต์จากพี่ติวเตอร์
+                  เกณฑ์การตรวจประเมินผลงาน 0–10 ดาว
                 </h2>
                 <p className="text-xs sm:text-sm text-[#6E675F] leading-relaxed">
-                  เมื่อส่งรูปผลงานเข้ามา พี่ติวเตอร์ AI จะช่วยดูลายเส้น แสงเงา องค์ประกอบ พร้อมให้รางวัล 100 – 300 Idea Coins และ +10 ถึง +50 Studio Fame
+                  พี่ติวเตอร์จะตรวจแบบไม่อวย ชี้ทั้ง <strong>ข้อดี</strong> และ <strong>ข้อด้อยที่ต้องแก้</strong> เทียบกับ <strong>โจทย์งานอย่างละเอียด</strong> และมาตรฐานการยื่นพอร์ตเข้าคณะศิลปะและการออกแบบในปัจจุบัน
                 </p>
               </div>
-              <div className="pt-2 text-xs text-[#8C8377]">
-                คำแนะนำ: ถ่ายรูปในที่สว่างให้เห็นกระดาษเต็มแผ่น จะช่วยให้พี่ติวเตอร์วิเคราะห์รายละเอียดได้แม่นยำขึ้นนะ
+              <div className="max-w-md mx-auto text-left p-4 rounded-xl bg-[#FAF8F4] border border-[#EAE3D5] text-xs text-[#6E675F] space-y-1.5">
+                <div><strong className="text-[#1F1D1A]">0 ดาว:</strong> ไม่ตรงโจทย์เลย งานยังไม่เสร็จ หรือขาดพื้นฐานจนประเมินไม่ได้</div>
+                <div><strong className="text-[#1F1D1A]">1–5 ดาว:</strong> ผิดโจทย์บางส่วน สัดส่วน/แสงเงา/องค์ประกอบยังมีข้อบกพร่องต้องแก้</div>
+                <div><strong className="text-[#1F1D1A]">6–8 ดาว:</strong> คุณภาพดีระดับ ม.ปลาย ตอบโจทย์ชัด มีพัฒนาการพร้อมต่อยอดลงพอร์ต</div>
+                <div><strong className="text-[#D97706]">9–10 ดาว:</strong> ได้ยากมาก! โดยเฉพาะ 10 ดาวต้องสมบูรณ์แบบไร้ที่ติทั้งแนวคิด เทคนิค และตรงโจทย์ 100%</div>
               </div>
             </div>
           )}
@@ -446,43 +583,55 @@ export const ArtCritiqueTab: React.FC<ArtCritiqueTabProps> = ({
           <h2 className="text-base sm:text-lg font-semibold text-[#1F1D1A]">
             แกลเลอรีผลงานของฉัน ({gallery.length})
           </h2>
-          <span className="text-xs text-[#6E675F]">คลิกที่ภาพเพื่ออ่านคอมเมนต์ย้อนหลัง</span>
+          <span className="text-xs text-[#6E675F]">คลิกที่ภาพเพื่ออ่านผลประเมินและข้อด้อยย้อนหลัง</span>
         </div>
 
         {gallery.length === 0 ? (
           <div className="py-10 text-center text-sm text-[#6E675F] bg-[#FAF8F4] rounded-xl border border-[#EFEAE0]">
-            ยังไม่มีผลงานในแกลเลอรี ลองอัปโหลดผลงานชิ้นแรกด้านบนเพื่อเก็บพอร์ตและรับเหรียญเลย!
+            ยังไม่มีผลงานในแกลเลอรี ลองกรอกโจทย์และอัปโหลดผลงานชิ้นแรกด้านบนได้เลย!
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {gallery.map((item) => (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => setSelectedHistory(item)}
-                className="group text-left rounded-xl border border-[#E7E1D6] bg-[#FAF8F4] overflow-hidden hover:border-[#C2B7A5] transition-all cursor-pointer"
-              >
-                <div className="aspect-[4/3] bg-white overflow-hidden">
-                  <img
-                    src={item.imageDataUrl}
-                    alt={item.category}
-                    referrerPolicy="no-referrer"
-                    className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
-                  />
-                </div>
-                <div className="p-3.5 space-y-1">
-                  <div className="text-xs text-[#6E675F] font-mono-num">
-                    {item.category} · {item.createdAt}
+            {gallery.map((item) => {
+              const stars = typeof item.critique.starRating === 'number' ? item.critique.starRating : 6;
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => setSelectedHistory(item)}
+                  className="group text-left rounded-xl border border-[#E7E1D6] bg-[#FAF8F4] overflow-hidden hover:border-[#C2B7A5] transition-all cursor-pointer"
+                >
+                  <div className="aspect-[4/3] bg-white overflow-hidden relative">
+                    <img
+                      src={item.imageDataUrl}
+                      alt={item.category}
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
+                    />
+                    <span className="absolute top-2.5 right-2.5 px-2.5 py-1 rounded-lg bg-[#1F1D1A]/85 text-white font-mono-num text-xs font-bold flex items-center gap-1">
+                      <Star className="w-3.5 h-3.5 fill-[#FBBF24] text-[#FBBF24]" />
+                      {stars}/10
+                    </span>
                   </div>
-                  <p className="text-sm font-medium text-[#1F1D1A] line-clamp-2">
-                    {item.critique.compliment}
-                  </p>
-                  <div className="text-xs font-mono-num text-[#D97706] pt-1">
-                    +{item.critique.coinsEarned} 💡 · +{item.critique.fameEarned} ⭐
+                  <div className="p-3.5 space-y-1.5">
+                    <div className="text-xs text-[#6E675F] font-mono-num">
+                      {item.category} · {item.createdAt}
+                    </div>
+                    {(item.assignmentBrief || item.note) && (
+                      <p className="text-xs font-medium text-[#1F1D1A] line-clamp-1">
+                        โจทย์: {item.assignmentBrief || item.note}
+                      </p>
+                    )}
+                    <p className="text-xs text-[#6E675F] line-clamp-2">
+                      {item.critique.weaknesses || item.critique.compliment}
+                    </p>
+                    <div className="text-xs font-mono-num text-[#D97706] pt-0.5">
+                      +{item.critique.coinsEarned} 💡 · +{item.critique.fameEarned} ⭐
+                    </div>
                   </div>
-                </div>
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
         )}
       </section>
@@ -503,7 +652,7 @@ export const ArtCritiqueTab: React.FC<ArtCritiqueTabProps> = ({
                   {selectedHistory.category} · {selectedHistory.createdAt}
                 </div>
                 <h3 className="text-base font-semibold text-[#1F1D1A] mt-0.5">
-                  บันทึกคอมเมนต์พี่ติวเตอร์
+                  บันทึกผลประเมินจากพี่ติวเตอร์ ({selectedHistory.critique.starRating ?? 6}/10 ดาว)
                 </h3>
               </div>
               <button
@@ -519,22 +668,32 @@ export const ArtCritiqueTab: React.FC<ArtCritiqueTabProps> = ({
               src={selectedHistory.imageDataUrl}
               alt={selectedHistory.category}
               referrerPolicy="no-referrer"
-              className="w-full max-h-[280px] object-contain rounded-xl bg-[#FAF8F4] border border-[#EAE3D5]"
+              className="w-full max-h-[260px] object-contain rounded-xl bg-[#FAF8F4] border border-[#EAE3D5]"
             />
-            {selectedHistory.note && (
-              <p className="text-xs text-[#6E675F]">โน้ตของฉัน: "{selectedHistory.note}"</p>
+            {renderStarRow(selectedHistory.critique.starRating ?? 6, 'w-4 h-4')}
+            {(selectedHistory.assignmentBrief || selectedHistory.note) && (
+              <p className="p-3 rounded-xl bg-[#F8F6F2] border border-[#ECE6DA] text-xs text-[#475569]">
+                <span className="font-semibold text-[#1F1D1A]">โจทย์งาน: </span>
+                {selectedHistory.assignmentBrief || selectedHistory.note}
+              </p>
             )}
             <div className="space-y-2.5 text-sm">
-              <p className="p-3 rounded-xl bg-[#FAF8F4] border border-[#EAE3D5]">
-                <span className="font-semibold text-[#2D6A4F]">จุดเด่น: </span>
+              <p className="p-3 rounded-xl bg-[#ECFDF5]/60 border border-[#A7F3D0]">
+                <span className="font-semibold text-[#065F46]">ข้อดี: </span>
                 {selectedHistory.critique.compliment}
               </p>
-              <p className="p-3 rounded-xl bg-[#FAF8F4] border border-[#EAE3D5]">
-                <span className="font-semibold text-[#2563EB]">คำแนะนำ: </span>
+              {selectedHistory.critique.weaknesses && (
+                <p className="p-3 rounded-xl bg-[#FFF1F2]/75 border border-[#FECDD3]">
+                  <span className="font-semibold text-[#BE123C]">ข้อด้อย & จุดต้องแก้: </span>
+                  {selectedHistory.critique.weaknesses}
+                </p>
+              )}
+              <p className="p-3 rounded-xl bg-[#EFF6FF]/70 border border-[#BFDBFE]">
+                <span className="font-semibold text-[#1E40AF]">แนวทางพัฒนาต่อ: </span>
                 {selectedHistory.critique.advice}
               </p>
               <p className="p-3 rounded-xl bg-[#FAF8F4] border border-[#EAE3D5]">
-                <span className="font-semibold text-[#D97706]">เกร็ดศิลปะ: </span>
+                <span className="font-semibold text-[#B45309]">มาตรฐานสอบเข้า: </span>
                 {selectedHistory.critique.designTip}
               </p>
             </div>

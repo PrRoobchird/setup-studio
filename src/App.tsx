@@ -35,14 +35,18 @@ import {
   StudioGameState,
   TabId,
 } from './types/studio';
+import { DAILY_QUIZ_LIMIT, getLocalDateKey } from './data/tpatQuizBank';
 import { playTone } from './utils/sound';
 
 const STORAGE_KEY = 'born_to_be_art_dream_studio_v1';
 
 function loadSavedState(): StudioGameState {
+  const today = getLocalDateKey();
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return INITIAL_GAME_STATE;
+    if (!raw) {
+      return { ...INITIAL_GAME_STATE, dailyQuizDate: today, dailyQuizCount: 0 };
+    }
     const parsed = JSON.parse(raw) as Partial<StudioGameState>;
 
     const rawPlaced = Array.isArray(parsed.placedItems)
@@ -58,6 +62,12 @@ function loadSavedState(): StudioGameState {
           ? 1
           : 0,
     }));
+
+    const answeredQuizIds = Array.isArray(parsed.answeredQuizIds)
+      ? parsed.answeredQuizIds.filter((id): id is string => typeof id === 'string')
+      : [];
+    const isSameDay = parsed.dailyQuizDate === today;
+    const dailyQuizCount = isSameDay ? Math.max(0, Number(parsed.dailyQuizCount) || 0) : 0;
 
     return {
       ...INITIAL_GAME_STATE,
@@ -81,9 +91,12 @@ function loadSavedState(): StudioGameState {
         : INITIAL_OWNED_AVATAR_ITEMS,
       gallery: Array.isArray(parsed.gallery) ? parsed.gallery : [],
       votedClassmates: parsed.votedClassmates || {},
+      answeredQuizIds,
+      dailyQuizDate: today,
+      dailyQuizCount,
     };
   } catch {
-    return INITIAL_GAME_STATE;
+    return { ...INITIAL_GAME_STATE, dailyQuizDate: today, dailyQuizCount: 0 };
   }
 }
 
@@ -339,13 +352,33 @@ export default function App() {
     pushToast(`เปลี่ยนเป็น ${floor.name} (+${floor.fameBonus} ⭐)`);
   };
 
-  const handleQuizAnswered = (isCorrect: boolean) => {
-    setState((prev) => ({
-      ...prev,
-      coins: prev.coins + (isCorrect ? 50 : 0),
-      quizAttemptCount: prev.quizAttemptCount + 1,
-      quizCorrectCount: prev.quizCorrectCount + (isCorrect ? 1 : 0),
-    }));
+  const handleQuizAnswered = (questionId: string, isCorrect: boolean) => {
+    const today = getLocalDateKey();
+    const usedToday = state.dailyQuizDate === today ? state.dailyQuizCount : 0;
+    if (usedToday >= DAILY_QUIZ_LIMIT) {
+      playTone('error', state.soundEnabled);
+      pushToast(`วันนี้ทำควิซครบ ${DAILY_QUIZ_LIMIT} ข้อแล้ว พรุ่งนี้มาลุยต่อนะ!`, 'info');
+      return;
+    }
+
+    setState((prev) => {
+      const prevCount = prev.dailyQuizDate === today ? prev.dailyQuizCount : 0;
+      if (prevCount >= DAILY_QUIZ_LIMIT) return prev;
+      const nextAnsweredIds = prev.answeredQuizIds.includes(questionId)
+        ? prev.answeredQuizIds
+        : [...prev.answeredQuizIds, questionId];
+
+      return {
+        ...prev,
+        coins: prev.coins + (isCorrect ? 50 : 0),
+        quizAttemptCount: prev.quizAttemptCount + 1,
+        quizCorrectCount: prev.quizCorrectCount + (isCorrect ? 1 : 0),
+        answeredQuizIds: nextAnsweredIds,
+        dailyQuizDate: today,
+        dailyQuizCount: prevCount + 1,
+      };
+    });
+
     if (isCorrect) {
       playTone('coin', state.soundEnabled);
       triggerCoinBounce();
@@ -388,7 +421,7 @@ export default function App() {
 
   const handleResetDemo = () => {
     localStorage.removeItem(STORAGE_KEY);
-    setState(INITIAL_GAME_STATE);
+    setState({ ...INITIAL_GAME_STATE, dailyQuizDate: getLocalDateKey(), dailyQuizCount: 0 });
     setDraftName(INITIAL_GAME_STATE.studentName);
     setDraftTrack(INITIAL_GAME_STATE.majorTrack);
     setShowResetModal(false);

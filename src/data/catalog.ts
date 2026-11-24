@@ -677,5 +677,8 @@ export const INITIAL_GAME_STATE: StudioGameState = {
   votedClassmates: {},
   quizCorrectCount: 0,
   quizAttemptCount: 0,
+  answeredQuizIds: [],
+  dailyQuizDate: '',
+  dailyQuizCount: 0,
   soundEnabled: true,
 };

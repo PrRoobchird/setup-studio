@@ -84,9 +84,11 @@ export type ArtCategory =
   | 'ทฤษฎีสี/องค์ประกอบศิลป์';
 
 export interface CritiqueResult {
+  starRating: number;
   coinsEarned: number;
   fameEarned: number;
   compliment: string;
+  weaknesses: string;
   advice: string;
   designTip: string;
 }
@@ -95,12 +97,20 @@ export interface ArtSubmission {
   id: string;
   imageDataUrl: string;
   category: ArtCategory;
+  assignmentBrief?: string;
   note?: string;
   createdAt: string;
   critique: CritiqueResult;
 }
 
+export type QuizExamCode = 'TPAT4' | 'TPAT21';
+export type QuizEra = 'past_5y' | 'forecast_5y' | 'ai_live';
+
 export interface QuizQuestion {
+  id: string;
+  examCode: QuizExamCode;
+  era: QuizEra;
+  yearLabel: string;
   category: string;
   question: string;
   options: string[];
@@ -148,5 +158,8 @@ export interface StudioGameState {
   votedClassmates: Record<string, StickerType>;
   quizCorrectCount: number;
   quizAttemptCount: number;
+  answeredQuizIds: string[];
+  dailyQuizDate: string;
+  dailyQuizCount: number;
   soundEnabled: boolean;
 }

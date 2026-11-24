@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Brain,
+  CalendarCheck2,
   CheckCircle2,
   Coins,
   HelpCircle,
@@ -18,6 +19,14 @@ import {
   STUDIO_ITEMS,
   WALL_THEMES,
 } from '../data/catalog';
+import {
+  ALL_TPAT_QUESTIONS,
+  DAILY_QUIZ_LIMIT,
+  QuizEraFilter,
+  QuizTrackFilter,
+  getLocalDateKey,
+  pickNonRepeatingQuizQuestion,
+} from '../data/tpatQuizBank';
 import { ItemCategory, QuizQuestion, StudioGameState } from '../types/studio';
 import { ItemThumbnail } from './ItemThumbnail';
 
@@ -33,7 +42,7 @@ interface ShopAndQuizTabProps {
   onSelectFloor: (floorId: string) => void;
   onBuyAvatarItem: (itemId: string) => void;
   onGoToStudio: () => void;
-  onQuizAnswered: (isCorrect: boolean) => void;
+  onQuizAnswered: (questionId: string, isCorrect: boolean) => void;
 }
 
 const FILTER_TABS: { id: ShopFilter; label: string }[] = [
@@ -67,12 +76,68 @@ export const ShopAndQuizTab: React.FC<ShopAndQuizTabProps> = ({
   const [quiz, setQuiz] = useState<QuizQuestion | null>(null);
   const [quizLoading, setQuizLoading] = useState(false);
   const [quizError, setQuizError] = useState<string | null>(null);
+  const [poolNotice, setPoolNotice] = useState<string | null>(null);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [askedQuestions, setAskedQuestions] = useState<string[]>([]);
+  const [trackFilter, setTrackFilter] = useState<QuizTrackFilter>('mixed');
+  const [eraFilter, setEraFilter] = useState<QuizEraFilter>('all');
 
-  const handleLoadQuiz = async () => {
+  const todayKey = getLocalDateKey();
+  const usedToday = state.dailyQuizDate === todayKey ? state.dailyQuizCount : 0;
+  const remainingToday = Math.max(0, DAILY_QUIZ_LIMIT - usedToday);
+  const quotaReached = remainingToday <= 0;
+
+  const bankStats = useMemo(() => {
+    const answeredSet = new Set(state.answeredQuizIds);
+    const matching = ALL_TPAT_QUESTIONS.filter((q) => {
+      if (trackFilter !== 'mixed' && q.examCode !== trackFilter) return false;
+      if (eraFilter !== 'all' && q.era !== eraFilter) return false;
+      return true;
+    });
+    const unseenInFilter = matching.filter((q) => !answeredSet.has(q.id)).length;
+    const totalDone = ALL_TPAT_QUESTIONS.filter((q) => answeredSet.has(q.id)).length;
+    return {
+      filterTotal: matching.length,
+      filterUnseen: unseenInFilter,
+      totalBank: ALL_TPAT_QUESTIONS.length,
+      totalDone,
+    };
+  }, [state.answeredQuizIds, trackFilter, eraFilter]);
+
+  const handleStartBankQuiz = () => {
+    if (quotaReached) {
+      setQuizError(`วันนี้ทำควิซครบ ${DAILY_QUIZ_LIMIT} ข้อแล้ว พักสายตาแล้วพรุ่งนี้มาเก็บโจทย์ใหม่ต่อนะ!`);
+      return;
+    }
+
+    const picked = pickNonRepeatingQuizQuestion(
+      trackFilter,
+      eraFilter,
+      state.answeredQuizIds,
+      quiz?.id
+    );
+    setQuizError(null);
+    setSelectedOption(null);
+    setQuiz(picked.question);
+    setAskedQuestions((prev) => [...prev.slice(-12), picked.question.question]);
+    if (picked.poolExhausted) {
+      setPoolNotice(
+        `ทำโจทย์ในหมวดนี้ครบทั้ง ${picked.totalCount} ข้อแล้ว ระบบกำลังสุ่มทบทวนแบบสลับตัวเลือกให้ใหม่`
+      );
+    } else {
+      setPoolNotice(null);
+    }
+  };
+
+  const handleLoadAiQuiz = async () => {
+    if (quotaReached) {
+      setQuizError(`วันนี้ทำควิซครบ ${DAILY_QUIZ_LIMIT} ข้อแล้ว พรุ่งนี้ค่อยสุ่มโจทย์ AI เพิ่มนะ!`);
+      return;
+    }
+
     setQuizLoading(true);
     setQuizError(null);
+    setPoolNotice(null);
     setSelectedOption(null);
 
     try {
@@ -80,19 +145,23 @@ export const ShopAndQuizTab: React.FC<ShopAndQuizTabProps> = ({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          examTrack: trackFilter === 'mixed' ? undefined : trackFilter,
+          eraPreference: eraFilter === 'all' ? undefined : eraFilter,
           previousQuestions: askedQuestions,
         }),
       });
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.error || 'ไม่สามารถโหลดควิซได้ในขณะนี้');
+        throw new Error(data.error || 'ไม่สามารถสร้างโจทย์ AI ได้ในขณะนี้');
       }
       const q = data as QuizQuestion;
       setQuiz(q);
-      setAskedQuestions((prev) => [...prev.slice(-8), q.question]);
+      setAskedQuestions((prev) => [...prev.slice(-12), q.question]);
     } catch (err) {
       setQuizError(
-        err instanceof Error ? err.message : 'เกิดข้อผิดพลาดในการสร้างโจทย์ ลองกดใหม่อีกครั้งนะ'
+        err instanceof Error
+          ? err.message
+          : 'ไม่สามารถเชื่อมต่อ AI สร้างโจทย์สดได้ ลองกดใช้โจทย์จากคลังข้อสอบ TPAT4/TPAT21 ได้เลยนะ'
       );
     } finally {
       setQuizLoading(false);
@@ -100,9 +169,9 @@ export const ShopAndQuizTab: React.FC<ShopAndQuizTabProps> = ({
   };
 
   const handleChooseOption = (idx: number) => {
-    if (!quiz || selectedOption !== null) return;
+    if (!quiz || selectedOption !== null || quotaReached) return;
     setSelectedOption(idx);
-    onQuizAnswered(idx === quiz.correctIndex);
+    onQuizAnswered(quiz.id, idx === quiz.correctIndex);
   };
 
   const filteredItems =
@@ -438,14 +507,14 @@ export const ShopAndQuizTab: React.FC<ShopAndQuizTabProps> = ({
         </div>
       </section>
 
-      {/* Right Column: Mini-Quiz ประจำวัน (Design Quiz powered by Gemini) */}
+      {/* Right Column: Mini-Quiz TPAT4 & TPAT21 */}
       <aside className="lg:col-span-5 xl:col-span-4 space-y-5">
-        <div className="bg-white border border-[#E7E1D6] rounded-2xl p-5 sm:p-6 space-y-5">
-          <div className="flex items-start justify-between gap-3 pb-4 border-b border-[#F1ECE2]">
+        <div className="bg-white border border-[#E7E1D6] rounded-2xl p-5 sm:p-6 space-y-4">
+          <div className="flex items-start justify-between gap-3 pb-3.5 border-b border-[#F1ECE2]">
             <div>
               <div className="text-xs font-medium text-[#D97706] flex items-center gap-1.5">
                 <Brain className="w-4 h-4" />
-                ติวสอบเข้ามหาวิทยาลัย TCAS
+                คลังข้อสอบ TPAT4 &amp; TPAT21
               </div>
               <h2 className="text-lg font-semibold text-[#1F1D1A] mt-0.5">
                 Mini-Quiz ประจำวัน
@@ -459,28 +528,141 @@ export const ShopAndQuizTab: React.FC<ShopAndQuizTabProps> = ({
             </div>
           </div>
 
-          {!quiz && !quizLoading && (
-            <div className="py-4 text-center space-y-4">
-              <div className="w-14 h-14 rounded-2xl bg-[#FFFBEB] border border-[#FDE68A] flex items-center justify-center mx-auto text-[#D97706]">
-                <HelpCircle className="w-7 h-7" />
+          {/* Daily Quota & Non-Repeating Bank Tracker */}
+          <div className="p-3.5 rounded-xl bg-[#FAF8F4] border border-[#EAE3D5] space-y-2.5">
+            <div className="flex items-center justify-between gap-2 text-xs">
+              <span className="font-semibold text-[#1F1D1A] flex items-center gap-1.5">
+                <CalendarCheck2 className="w-4 h-4 text-[#2563EB]" />
+                โควตาวันนี้
+              </span>
+              <span
+                className={`font-mono-num font-semibold ${
+                  quotaReached ? 'text-[#BE123C]' : 'text-[#2563EB]'
+                }`}
+              >
+                {usedToday} / {DAILY_QUIZ_LIMIT} ข้อ{' '}
+                <span className="font-sans font-normal text-[#6E675F]">
+                  {quotaReached ? '(ครบแล้ววันนี้)' : `(เหลือ ${remainingToday} ข้อ)`}
+                </span>
+              </span>
+            </div>
+
+            <div className="grid grid-cols-5 gap-1.5" aria-label="ความคืบหน้าควิซวันนี้">
+              {Array.from({ length: DAILY_QUIZ_LIMIT }).map((_, idx) => (
+                <div
+                  key={idx}
+                  className={`h-2 rounded-sm transition-colors ${
+                    idx < usedToday ? 'bg-[#2563EB]' : 'bg-[#E5DEC9]'
+                  }`}
+                />
+              ))}
+            </div>
+
+            <div className="flex items-center justify-between text-[11px] text-[#6E675F] pt-0.5">
+              <span>ทำโจทย์ไม่ซ้ำแล้ว {bankStats.totalDone} / {bankStats.totalBank} ข้อ</span>
+              <span className="font-mono-num text-[#2D6A4F] font-medium">
+                เหลือในหมวด {bankStats.filterUnseen} ข้อ
+              </span>
+            </div>
+          </div>
+
+          {/* Track & Era Filters */}
+          <div className="space-y-2">
+            <div className="grid grid-cols-3 gap-1 p-1 bg-[#FAF8F4] border border-[#EAE3D5] rounded-xl">
+              {(
+                [
+                  { id: 'mixed', label: 'รวม TPAT' },
+                  { id: 'TPAT4', label: 'TPAT4 สถาปัตย์' },
+                  { id: 'TPAT21', label: 'TPAT21 ศิลป์' },
+                ] as { id: QuizTrackFilter; label: string }[]
+              ).map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setTrackFilter(t.id)}
+                  className={`py-1.5 px-2 rounded-lg text-[11px] sm:text-xs font-medium transition-colors cursor-pointer ${
+                    trackFilter === t.id
+                      ? 'bg-[#1F1D1A] text-white'
+                      : 'text-[#6E675F] hover:text-[#1F1D1A]'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-3 gap-1 p-1 bg-[#FAF8F4] border border-[#EAE3D5] rounded-xl">
+              {(
+                [
+                  { id: 'all', label: 'ทุกช่วงปี' },
+                  { id: 'past_5y', label: 'ย้อนหลัง 65–69' },
+                  { id: 'forecast_5y', label: 'คาดการณ์ 70–74' },
+                ] as { id: QuizEraFilter; label: string }[]
+              ).map((era) => (
+                <button
+                  key={era.id}
+                  type="button"
+                  onClick={() => setEraFilter(era.id)}
+                  className={`py-1.5 px-1.5 rounded-lg text-[11px] font-medium transition-colors cursor-pointer ${
+                    eraFilter === era.id
+                      ? 'bg-[#D97706] text-white'
+                      : 'text-[#6E675F] hover:text-[#1F1D1A]'
+                  }`}
+                >
+                  {era.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Daily Limit Reached Notice (when not viewing just-answered 5th explanation) */}
+          {quotaReached && selectedOption === null && !quizLoading && (
+            <div className="py-5 px-4 rounded-xl bg-[#FFFBEB] border border-[#FDE68A] text-center space-y-2.5">
+              <div className="w-12 h-12 rounded-2xl bg-white border border-[#FDE68A] flex items-center justify-center mx-auto text-[#D97706]">
+                <CalendarCheck2 className="w-6 h-6" />
               </div>
-              <div className="space-y-1.5">
+              <div className="text-sm font-semibold text-[#92400E]">
+                ทำควิซครบ {DAILY_QUIZ_LIMIT} ข้อสำหรับวันนี้แล้ว!
+              </div>
+              <p className="text-xs text-[#78350F] leading-relaxed">
+                ระบบจำกัดการทำควิซไม่เกินวันละ {DAILY_QUIZ_LIMIT} ข้อ เพื่อให้น้องฝึกอย่างสม่ำเสมอทุกวันโดยไม่เจอโจทย์ซ้ำ พรุ่งนี้กลับมาเก็บอีก 5 ข้อนะ
+              </p>
+            </div>
+          )}
+
+          {/* Initial Empty State before starting */}
+          {!quiz && !quizLoading && !quotaReached && (
+            <div className="py-3 text-center space-y-3.5">
+              <div className="w-12 h-12 rounded-2xl bg-[#FFFBEB] border border-[#FDE68A] flex items-center justify-center mx-auto text-[#D97706]">
+                <HelpCircle className="w-6 h-6" />
+              </div>
+              <div className="space-y-1">
                 <p className="text-sm font-medium text-[#1F1D1A]">
-                  ท้าทายความรู้ทฤษฎีสี องค์ประกอบศิลป์ & ประวัติศาสตร์ศิลปะ
+                  คลังโจทย์ TPAT4 &amp; TPAT21 รวม {bankStats.totalBank} ข้อไม่ซ้ำ
                 </p>
                 <p className="text-xs text-[#6E675F] leading-relaxed">
-                  Gemini AI จะสุ่มออกข้อสอบปรนัย 4 ตัวเลือกให้ใหม่ทุกครั้ง ตอบถูกรับทันที{' '}
-                  <span className="font-semibold text-[#D97706]">+50 Idea Coins</span>!
+                  รวบรวมแนวข้อสอบจริงย้อนหลัง 5 ปี (2565–2569) และโจทย์คาดการณ์ 5 ปีข้างหน้า (2570–2574) ตอบถูกรับ{' '}
+                  <span className="font-semibold text-[#D97706]">+50 💡</span> (วันละไม่เกิน {DAILY_QUIZ_LIMIT} ข้อ)
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={handleLoadQuiz}
-                className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 min-h-[48px] rounded-xl bg-[#D97706] text-white text-sm font-medium hover:bg-[#B45309] active:scale-[0.98] transition-all cursor-pointer"
-              >
-                <Sparkles className="w-4 h-4" />
-                เริ่มทำ Mini-Quiz (+50 💡)
-              </button>
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={handleStartBankQuiz}
+                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 min-h-[46px] rounded-xl bg-[#D97706] text-white text-sm font-medium hover:bg-[#B45309] active:scale-[0.98] transition-all cursor-pointer"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  เริ่มทำควิซ TPAT (+50 💡)
+                </button>
+                <button
+                  type="button"
+                  onClick={handleLoadAiQuiz}
+                  className="w-full inline-flex items-center justify-center gap-1.5 px-3 py-2 min-h-[38px] rounded-xl bg-[#FAF8F4] border border-[#DED5C5] text-xs font-medium text-[#1F1D1A] hover:bg-[#F1ECE2] transition-colors cursor-pointer"
+                >
+                  <Brain className="w-3.5 h-3.5 text-[#2563EB]" />
+                  สุ่มโจทย์ AI คาดการณ์สด (Gemini)
+                </button>
+              </div>
             </div>
           )}
 
@@ -488,31 +670,54 @@ export const ShopAndQuizTab: React.FC<ShopAndQuizTabProps> = ({
             <div className="py-10 text-center space-y-3">
               <Loader2 className="w-7 h-7 animate-spin text-[#D97706] mx-auto" />
               <p className="text-sm text-[#6E675F]">
-                พี่ติวเตอร์กำลังเลือกข้อสอบ TCAS สนุกๆ ให้อยู่...
+                พี่ติวเตอร์ AI กำลังออกโจทย์แนวข้อสอบใหม่ให้...
               </p>
             </div>
           )}
 
           {quizError && (
-            <div className="space-y-3">
-              <div className="p-3.5 rounded-xl bg-[#FFF1F2] border border-[#FECDD3] text-xs sm:text-sm text-[#BE123C]">
+            <div className="space-y-2.5">
+              <div className="p-3.5 rounded-xl bg-[#FFF1F2] border border-[#FECDD3] text-xs text-[#BE123C] leading-relaxed">
                 {quizError}
               </div>
-              <button
-                type="button"
-                onClick={handleLoadQuiz}
-                className="w-full py-2.5 min-h-[44px] rounded-xl bg-[#1F1D1A] text-white text-sm font-medium hover:bg-[#33302B] cursor-pointer"
-              >
-                ลองโหลดโจทย์อีกครั้ง
-              </button>
+              {!quotaReached && (
+                <button
+                  type="button"
+                  onClick={handleStartBankQuiz}
+                  className="w-full py-2.5 min-h-[42px] rounded-xl bg-[#D97706] text-white text-xs sm:text-sm font-medium hover:bg-[#B45309] cursor-pointer"
+                >
+                  สุ่มโจทย์จากคลัง TPAT4/TPAT21 ทันที
+                </button>
+              )}
             </div>
           )}
 
-          {quiz && !quizLoading && (
-            <div className="space-y-4">
-              <div className="text-xs text-[#6E675F]">
-                หมวด: <span className="font-medium text-[#1F1D1A]">{quiz.category}</span> · รางวัล{' '}
+          {poolNotice && !quizError && (
+            <div className="p-2.5 rounded-xl bg-[#EFF6FF] border border-[#BFDBFE] text-[11px] text-[#1E40AF]">
+              {poolNotice}
+            </div>
+          )}
+
+          {quiz && !quizLoading && (!quotaReached || selectedOption !== null) && (
+            <div className="space-y-3.5">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span
+                    className={`px-2 py-0.5 rounded-md font-mono-num font-semibold text-[11px] ${
+                      quiz.examCode === 'TPAT4'
+                        ? 'bg-[#EFF6FF] text-[#1D4ED8] border border-[#BFDBFE]'
+                        : 'bg-[#FFFBEB] text-[#B45309] border border-[#FDE68A]'
+                    }`}
+                  >
+                    {quiz.examCode}
+                  </span>
+                  <span className="text-[#6E675F] font-medium">{quiz.yearLabel}</span>
+                </div>
                 <span className="font-mono-num font-semibold text-[#D97706]">+50 💡</span>
+              </div>
+
+              <div className="text-[11px] text-[#6E675F]">
+                หมวด: <span className="font-medium text-[#1F1D1A]">{quiz.category}</span>
               </div>
 
               <p className="text-sm sm:text-base font-medium text-[#1F1D1A] leading-relaxed">
@@ -539,12 +744,12 @@ export const ShopAndQuizTab: React.FC<ShopAndQuizTabProps> = ({
 
                   return (
                     <button
-                      key={`${quiz.question}-${idx}`}
+                      key={`${quiz.id}-${idx}`}
                       type="button"
-                      disabled={isAnswered}
+                      disabled={isAnswered || quotaReached}
                       onClick={() => handleChooseOption(idx)}
                       className={`w-full flex items-center justify-between gap-2.5 p-3.5 min-h-[46px] rounded-xl border text-left text-xs sm:text-sm transition-all ${
-                        isAnswered ? 'cursor-default' : 'cursor-pointer'
+                        isAnswered || quotaReached ? 'cursor-default' : 'cursor-pointer'
                       } ${btnClass}`}
                     >
                       <span className="leading-snug">
@@ -581,14 +786,33 @@ export const ShopAndQuizTab: React.FC<ShopAndQuizTabProps> = ({
                     <p>{quiz.explanation}</p>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={handleLoadQuiz}
-                    className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 min-h-[44px] rounded-xl bg-[#1F1D1A] text-white text-sm font-medium hover:bg-[#33302B] transition-colors cursor-pointer"
-                  >
-                    <Sparkles className="w-4 h-4 text-[#FBBF24]" />
-                    ลุยโจทย์ข้อถัดไป
-                  </button>
+                  {quotaReached ? (
+                    <div className="p-3.5 rounded-xl bg-[#FAF8F4] border border-[#E7E1D6] text-xs text-[#6E675F] leading-relaxed text-center">
+                      <strong className="text-[#1F1D1A] block mb-0.5">
+                        เก่งมาก! ทำควิซครบ {DAILY_QUIZ_LIMIT} / {DAILY_QUIZ_LIMIT} ข้อของวันนี้แล้ว
+                      </strong>
+                      พรุ่งนี้กลับมาสุ่มโจทย์ชุดใหม่แบบไม่ซ้ำกันได้อีก 5 ข้อนะ
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 gap-2">
+                      <button
+                        type="button"
+                        onClick={handleStartBankQuiz}
+                        className="w-full inline-flex items-center justify-center gap-2 py-2.5 px-4 min-h-[44px] rounded-xl bg-[#1F1D1A] text-white text-sm font-medium hover:bg-[#33302B] transition-colors cursor-pointer"
+                      >
+                        <Sparkles className="w-4 h-4 text-[#FBBF24]" />
+                        ลุยโจทย์ข้อถัดไป (เหลือ {remainingToday} ข้อวันนี้)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleLoadAiQuiz}
+                        className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 min-h-[38px] rounded-xl bg-[#FAF8F4] border border-[#DED5C5] text-xs font-medium text-[#1F1D1A] hover:bg-[#F1ECE2] transition-colors cursor-pointer"
+                      >
+                        <Brain className="w-3.5 h-3.5 text-[#2563EB]" />
+                        สุ่มโจทย์ AI คาดการณ์สด
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

@@ -125,10 +125,23 @@ async function startServer() {
 
   app.post('/api/critique', async (req, res) => {
     try {
-      const { imageBase64, mimeType, category, note, studentTrack } = req.body ?? {};
+      const { imageBase64, mimeType, category, assignmentBrief, note, studentTrack } = req.body ?? {};
 
       if (!imageBase64 || typeof imageBase64 !== 'string') {
         return res.status(400).json({ error: 'กรุณาอัปโหลดรูปภาพผลงานก่อนส่งตรวจนะ' });
+      }
+
+      const briefText =
+        typeof assignmentBrief === 'string' && assignmentBrief.trim().length > 0
+          ? assignmentBrief.trim()
+          : typeof note === 'string' && note.trim().length > 0
+          ? note.trim()
+          : '';
+
+      if (!briefText) {
+        return res.status(400).json({
+          error: 'กรุณากรอก "โจทย์งานอย่างละเอียด" ก่อนส่งตรวจ เพื่อให้พี่ติวประเมินคะแนน 0–10 ดาวตามโจทย์ได้ถูกต้อง',
+        });
       }
 
       const ai = getGeminiClient();
@@ -141,12 +154,12 @@ async function startServer() {
 
       const promptText = [
         `หมวดหมู่ผลงาน: ${category || 'ทั่วไป'}`,
-        studentTrack ? `สายการเรียนของน้อง: ${studentTrack}` : '',
-        note ? `โน้ตจากน้อง: "${note}"` : '',
-        'ช่วยวิเคราะห์ผลงานในภาพนี้อย่างละเอียดและอบอุ่น แล้วตอบกลับเป็น JSON ตามโครงสร้างที่กำหนด',
+        studentTrack ? `สายการเรียนเป้าหมายของนักเรียน: ${studentTrack}` : '',
+        `โจทย์งานอย่างละเอียด (เกณฑ์หลักในการตรวจให้คะแนน):\n"""\n${briefText}\n"""`,
+        'จงตรวจผลงานในภาพนี้เทียบกับ "โจทย์งานอย่างละเอียด" และมาตรฐานพอร์ตโฟลิโอ ม.ปลาย เพื่อสอบเข้าคณะศิลปะและการออกแบบในปัจจุบันอย่างตรงไปตรงมา ไม่อวย พร้อมระบุทั้งข้อดี ข้อด้อย และให้คะแนน 0-10 ดาวตามเกณฑ์ที่เข้มงวด',
       ]
         .filter(Boolean)
-        .join('\n');
+        .join('\n\n');
 
       const response = await withRetry(() =>
         ai.models.generateContent({
@@ -165,38 +178,50 @@ async function startServer() {
           config: {
             thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
             systemInstruction:
-              'คุณคือ "พี่ติวเตอร์ใจดีแห่ง Born to be Art" ติวเตอร์สอนศิลปะและการออกแบบที่เชี่ยวชาญการติวเข้ามหาวิทยาลัย (TCAS สายสถาปัตยกรรม นิเทศศิลป์ มัณฑนศิลป์ แฟชั่น วิจิตรศิลป์) พูดจากับน้องๆ นักเรียนมัธยมด้วยภาษาไทยที่เป็นกันเอง อบอุ่น สนุกสนาน ให้กำลังใจ แต่มีความแม่นยำทางวิชาการศิลปะ วิเคราะห์ภาพจริงที่น้องส่งมาอย่างเจาะจง:\n' +
-              '- coinsEarned: คะแนนเหรียญ Idea Coins ระหว่าง 100 ถึง 300 ตามความสมบูรณ์ ความตั้งใจ และเทคนิคในภาพ\n' +
-              '- fameEarned: คะแนนชื่อเสียง Studio Fame ระหว่าง 10 ถึง 50\n' +
-              '- compliment: คำชมจุดเด่นของงานชิ้นนี้อย่างเจาะจงกับสิ่งที่เห็นในภาพจริง (2-3 ประโยค)\n' +
-              '- advice: คำแนะนำเชิงเทคนิคสั้นๆ 1 ข้อที่ทำตามได้จริงเพื่อพัฒนาชิ้นต่อไป\n' +
-              '- designTip: เกร็ดความรู้ด้านศิลปะ หรือชื่อศิลปิน/สถาปนิก/นักออกแบบที่เกี่ยวข้องกับสไตล์งานนี้ 1 ข้อ',
+              'คุณคือ "พี่ติวเตอร์สายตรง" แห่ง Born to be Art ผู้เชี่ยวชาญการตรวจพอร์ตโฟลิโอและติวสอบเข้าคณะสถาปัตยกรรมศาสตร์ มัณฑนศิลป์ นิเทศศิลป์ วิจิตรศิลป์ และแฟชั่นดีไซน์ ระดับมหาวิทยาลัยชั้นนำในไทยยุคปัจจุบัน\n\n' +
+              'หลักการตรวจงาน (สำคัญมาก):\n' +
+              '1. **ห้ามอวย ห้ามชมเกินจริง**: พูดความจริงอย่างตรงไปตรงมา เป็นกันเองแต่จริงจังแบบมืออาชีพ ชี้ให้เห็นทั้ง "ข้อดี" ที่ทำได้จริงในภาพ และ "ข้อด้อย/ข้อผิดพลาด" ที่เห็นชัดเจน (เช่น Perspective เบี้ยว เส้นแข็ง ขาดน้ำหนักแสงเงา สัดส่วนเพี้ยน การจัดองค์ประกอบอึดอัด สีตุ่น หรือไม่ตรงโจทย์)\n' +
+              '2. **อ้างอิงโจทย์งานเป็นหลัก**: ตรวจสอบว่าภาพที่ส่งมาตอบโจทย์ที่ระบุไว้ใน "โจทย์งานอย่างละเอียด" ครบถ้วนแค่ไหน หากไม่ตรงโจทย์หรือทำไม่ครบองค์ประกอบ ให้หักคะแนนอย่างชัดเจน\n' +
+              '3. **เกณฑ์มาตรฐาน ม.ปลาย เข้ามหาวิทยาลัยปัจจุบัน & ระบบคะแนน 0-10 ดาว**:\n' +
+              '   - 0 ดาว: ภาพไม่เกี่ยวกับโจทย์ งานไม่เสร็จเลย หรือไม่มีคุณภาพพื้นฐานที่ตรวจได้\n' +
+              '   - 1-3 ดาว: ผิดโจทย์หลายจุด โครงสร้าง/Perspective/สัดส่วนผิดพลาดรุนแรง ขาดการคุมค่าน้ำหนักและงานฝีมือ\n' +
+              '   - 4-5 ดาว: พอเห็นความตั้งใจและแนวคิดพื้นฐาน แต่ยังไม่ผ่านเกณฑ์ยื่นพอร์ต มีจุดบกพร่องด้านเทคนิคหรือองค์ประกอบหลายจุด\n' +
+              '   - 6-7 ดาว: ระดับมาตรฐานนักเรียน ม.ปลาย ทั่วไปที่ฝึกมาดี ตอบโจทย์พอใช้ได้ แต่ยังมีจุดด้อยที่ต้องเกลาให้คมขึ้นเพื่อแข่งขัน\n' +
+              '   - 8 ดาว: ดีมาก เห็นทักษะและสไตล์ชัด ตรงโจทย์เกือบสมบูรณ์ เหมาะใช้เป็นชิ้นเด่นในพอร์ตได้หลังแก้จุดเล็กน้อย\n' +
+              '   - 9 ดาว: ยอดเยี่ยมระดับหัวกะทิ เทคนิค แนวคิด และการนำเสนอโดดเด่นมาก มีจุดติเพียงเล็กน้อยมาก\n' +
+              '   - 10 ดาว: **ได้ยากมากที่สุด** ต้องสมบูรณ์แบบไร้ที่ติในทุกมิติ ทั้งความตรงโจทย์ 100%, ความคิดสร้างสรรค์ระดับสูง, โครงสร้าง/Perspective/Anatomy แม่นยำ, ค่าน้ำหนักแสงเงา-สี-พื้นผิวไร้ข้อกังขา และความประณีตระดับท็อปพอร์ตโฟลิโอ\n' +
+              '4. ระบุฟิลด์ JSON ดังนี้:\n' +
+              '   - starRating: จำนวนเต็ม 0 ถึง 10 ตามเกณฑ์เข้มงวดด้านบน\n' +
+              '   - compliment (ข้อดี): จุดแข็งที่ทำได้ดีจริงในภาพและการตอบโจทย์ (2-3 ประโยค ตรงไปตรงมา)\n' +
+              '   - weaknesses (ข้อด้อย): จุดอ่อน ข้อผิดพลาดทางเทคนิค หรือส่วนที่หลุดจากโจทย์อย่างชัดเจน (2-3 ประโยค ตรงไปตรงมา ไม่อ้อมค้อม)\n' +
+              '   - advice (แนวทางแก้ไข): ขั้นตอนปฏิบัติที่ชัดเจน 1-2 ข้อ ว่าชิ้นต่อไปหรือการแก้งานนี้ต้องแก้อะไรก่อน-หลัง\n' +
+              '   - designTip (มาตรฐานสอบเข้า/เกร็ดเทคนิค): มุมมองกรรมการพอร์ตเข้ามหาลัยในปัจจุบัน หรือหลักวิชาการที่เกี่ยวข้องกับงานชิ้นนี้',
             responseMimeType: 'application/json',
             responseSchema: {
               type: Type.OBJECT,
               properties: {
-                coinsEarned: {
+                starRating: {
                   type: Type.INTEGER,
-                  description: 'Number between 100 and 300 based on artwork completeness.',
-                },
-                fameEarned: {
-                  type: Type.INTEGER,
-                  description: 'Number between 10 and 50 based on artistic merit.',
+                  description: 'Strict integer score from 0 to 10 against the assignment brief and current Thai university art portfolio standards. 10 is extraordinarily rare and requires zero flaws.',
                 },
                 compliment: {
                   type: Type.STRING,
-                  description: 'Specific friendly praise in Thai about the submitted artwork.',
+                  description: 'Honest, grounded strengths observed in the artwork and brief fulfillment in Thai (no flattery).',
+                },
+                weaknesses: {
+                  type: Type.STRING,
+                  description: 'Direct, constructive weaknesses, technical flaws, or missing brief requirements observed in the artwork in Thai.',
                 },
                 advice: {
                   type: Type.STRING,
-                  description: 'One concise technical advice in Thai to improve next time.',
+                  description: 'Actionable step-by-step improvement advice in Thai.',
                 },
                 designTip: {
                   type: Type.STRING,
-                  description: 'One art/design trivia or related artist/architect reference in Thai.',
+                  description: 'University admission portfolio standard insight or technical principle in Thai.',
                 },
               },
-              required: ['coinsEarned', 'fameEarned', 'compliment', 'advice', 'designTip'],
+              required: ['starRating', 'compliment', 'weaknesses', 'advice', 'designTip'],
             },
           },
         })
@@ -204,15 +229,23 @@ async function startServer() {
 
       const parsed = parseModelJson(response.text);
 
-      const coinsEarned = Math.min(300, Math.max(100, Math.round(Number(parsed.coinsEarned) || 150)));
-      const fameEarned = Math.min(50, Math.max(10, Math.round(Number(parsed.fameEarned) || 20)));
+      const rawStars = Number(parsed.starRating);
+      const starRating = Number.isFinite(rawStars)
+        ? Math.min(10, Math.max(0, Math.round(rawStars)))
+        : 5;
+
+      // Scale studio rewards realistically with the 0-10 star score
+      const coinsEarned = Math.min(300, Math.max(20, 20 + starRating * 28));
+      const fameEarned = Math.min(50, Math.max(0, starRating * 5));
 
       return res.json({
+        starRating,
         coinsEarned,
         fameEarned,
-        compliment: String(parsed.compliment || 'งานชิ้นนี้ตั้งใจมากเลยนะ เส้นสายมีพลังดีมาก!'),
-        advice: String(parsed.advice || 'ลองเพิ่มน้ำหนักเข้ม-อ่อนในจุดโฟกัสเพื่อให้งานมีมิติชัดขึ้นอีกนิดนะ'),
-        designTip: String(parsed.designTip || 'ลองศึกษาการใช้แสงเงาแบบ Chiaroscuro เพื่อเพิ่มอารมณ์ให้งานดูมีชีวิตชีวาขึ้น'),
+        compliment: String(parsed.compliment || 'เห็นความพยายามในการวางโครงสร้างเบื้องต้นและถ่ายทอดไอเดียตามโจทย์'),
+        weaknesses: String(parsed.weaknesses || 'ค่าน้ำหนักแสงเงาและสัดส่วนยังขาดความแม่นยำ ควรเก็บรายละเอียดให้คมขึ้น'),
+        advice: String(parsed.advice || 'ให้เช็กโครงสร้างเส้นแกนและแบ่งน้ำหนักเข้ม-กลาง-อ่อน 3 ระดับให้ชัดเจนก่อนเก็บรายละเอียด'),
+        designTip: String(parsed.designTip || 'พอร์ตเข้าคณะศิลปะและการออกแบบยุคปัจจุบันเน้นทั้งความแม่นยำพื้นฐานและการตีความโจทย์ที่ชัดเจน'),
       });
     } catch (error: unknown) {
       const { status, message } = extractErrorDetails(error);
@@ -227,50 +260,80 @@ async function startServer() {
 
   app.post('/api/quiz', async (req, res) => {
     try {
-      const { topic, previousQuestions } = req.body ?? {};
+      const { examTrack, eraPreference, previousQuestions } = req.body ?? {};
       const ai = getGeminiClient();
 
-      const topicPool = [
-        'ทฤษฎีสี (Color Theory) เช่น สีคู่ตรงข้าม วรรณะสี ค่าความอิ่มตัว',
-        'องค์ประกอบศิลป์ (Composition) เช่น จุดนำสายตา สมดุล สัดส่วนทองคำ',
-        'ประวัติศาสตร์ศิลปะไทยและสากล เช่น บาวเฮาส์ อิมเพรสชันนิสม์ ศิลปะไทยร่วมสมัย',
-        'หลักการออกแบบสถาปัตยกรรมและนิเทศศิลป์ เช่น Typography, Space, Perspective',
-      ];
-      const selectedTopic =
-        typeof topic === 'string' && topic.trim().length > 0
-          ? topic
-          : topicPool[Math.floor(Math.random() * topicPool.length)];
+      const chosenExam: 'TPAT4' | 'TPAT21' =
+        examTrack === 'TPAT4' || examTrack === 'TPAT21'
+          ? examTrack
+          : Math.random() < 0.5
+          ? 'TPAT4'
+          : 'TPAT21';
 
-      const prevList = Array.isArray(previousQuestions) ? previousQuestions.slice(-6) : [];
+      const chosenEra: 'past_5y' | 'forecast_5y' =
+        eraPreference === 'past_5y' || eraPreference === 'forecast_5y'
+          ? eraPreference
+          : Math.random() < 0.45
+          ? 'past_5y'
+          : 'forecast_5y';
+
+      const tpat4Topics = [
+        'การออกแบบสถาปัตยกรรมเขตร้อน การบังแดด และระบายอากาศธรรมชาติ',
+        'โครงสร้าง Truss, Cantilever, Space Frame และวัสดุศาสตร์ก่อสร้าง',
+        'มิติสัมพันธ์ ภาพฉาย Plan-Elevation-Section และ Isometric',
+        'Universal Design สังคมสูงวัย ความลาดชันทางลาด และมาตรฐานบันได',
+        'Net-Zero Building, Embodied Carbon, CLT Mass Timber และ BIPV',
+        'Urban Wind Corridor, Sponge City, 15-Minute City และ TOD',
+        'AI Parametric Design, Digital Twin และ 3D Printing ก่อสร้าง',
+      ];
+      const tpat21Topics = [
+        'ทัศนธาตุ หลักการจัดองค์ประกอบศิลป์ Gestalt และ Rule of Thirds',
+        'ทฤษฎีสี Munsell, RGB vs CMYK, จิตวิทยาสี และ Wide Color Gamut',
+        'ประวัติศาสตร์ศิลปะไทย (สุโขทัย ขรัวอินโข่ง ศิลปะร่วมสมัยไทย) และสากล',
+        'เทคนิควาดเส้น Drawing แสงเงา Sfumato, Cross-Hatching และภาพพิมพ์',
+        'จริยธรรม AI ในศิลปะ ลิขสิทธิ์ภาพดิจิทัล และ Interactive Immersive Art',
+        'Sustainable Fashion (Zero-Waste Pattern), Bio-Pigments และ Eco-Packaging',
+        'Visual Metaphor, Dynamic Branding, Spatial Typography และ Inclusive UI',
+      ];
+
+      const pool = chosenExam === 'TPAT4' ? tpat4Topics : tpat21Topics;
+      const selectedTopic = pool[Math.floor(Math.random() * pool.length)];
+
+      const eraPrompt =
+        chosenEra === 'past_5y'
+          ? `อ้างอิงแนวข้อสอบจริง ${chosenExam} ย้อนหลัง 5 ปี (2565–2569)`
+          : `คาดการณ์แนวโน้มข้อสอบ ${chosenExam} ล่วงหน้า 5 ปีข้างหน้า (2570–2574) ตามบริบทเทคโนโลยี สิ่งแวดล้อม และสังคมยุคใหม่`;
+
+      const prevList = Array.isArray(previousQuestions) ? previousQuestions.slice(-10) : [];
       const avoidPrompt =
         prevList.length > 0
-          ? `\nห้ามออกคำถามซ้ำกับหัวข้อเหล่านี้:\n- ${prevList.join('\n- ')}`
+          ? `\nห้ามออกคำถามซ้ำหรือใกล้เคียงกับคำถามเหล่านี้:\n- ${prevList.join('\n- ')}`
           : '';
 
       const response = await withRetry(() =>
         ai.models.generateContent({
           model: MODEL_NAME,
-          contents: `ช่วยสร้างคำถามควิซเตรียมสอบ TCAS ศิลปะและการออกแบบ 1 ข้อ ในหัวข้อ: ${selectedTopic}${avoidPrompt}`,
+          contents: `สร้างข้อสอบปรนัย 4 ตัวเลือกชุด ${chosenExam} จำนวน 1 ข้อ\nแนวข้อสอบ: ${eraPrompt}\nหัวข้อย่อย: ${selectedTopic}${avoidPrompt}`,
           config: {
             thinkingConfig: { thinkingLevel: ThinkingLevel.LOW },
             systemInstruction:
-              'คุณคือพี่ติวเตอร์แห่ง Born to be Art กำลังทำ Mini-Quiz สนุกๆ ให้น้อง ม.ปลาย ฝึกเตรียมสอบเข้าคณะสายศิลปะและการออกแบบ (TCAS) ออกข้อสอบปรนัย 4 ตัวเลือกเป็นภาษาไทยที่ถูกต้องตามหลักวิชาการ ชัดเจน ไม่อำพราง และให้คำอธิบายเฉลยสั้นๆ ที่อ่านเข้าใจง่ายเป็นกันเอง',
+              'คุณคืออาจารย์ผู้เชี่ยวชาญการออกข้อสอบ TPAT4 (ความถนัดทางสถาปัตยกรรมศาสตร์) และ TPAT21 (ความถนัดศิลปกรรมศาสตร์ ทัศนศิลป์) แห่ง Born to be Art ออกข้อสอบปรนัย 4 ตัวเลือกเป็นภาษาไทยที่มีคุณภาพเทียบเท่าข้อสอบ TCAS จริง กระชับ อ่านไว ไม่กำกวม และให้คำอธิบายเฉลยสั้นๆ ที่ได้ความรู้ทันที',
             responseMimeType: 'application/json',
             responseSchema: {
               type: Type.OBJECT,
               properties: {
                 category: {
                   type: Type.STRING,
-                  description: 'Short Thai category name like ทฤษฎีสี, องค์ประกอบศิลป์, ประวัติศาสตร์ศิลปะ, หลักการออกแบบ',
+                  description: 'Short Thai sub-topic name (2-4 words).',
                 },
                 question: {
                   type: Type.STRING,
-                  description: 'The quiz question in Thai.',
+                  description: 'Clear multiple choice question in Thai.',
                 },
                 options: {
                   type: Type.ARRAY,
                   items: { type: Type.STRING },
-                  description: 'Exactly 4 distinct multiple choice options in Thai.',
+                  description: 'Exactly 4 distinct options in Thai.',
                 },
                 correctIndex: {
                   type: Type.INTEGER,
@@ -278,7 +341,7 @@ async function startServer() {
                 },
                 explanation: {
                   type: Type.STRING,
-                  description: 'Short friendly tutor explanation in Thai why the answer is correct.',
+                  description: 'Short friendly tutor explanation in Thai.',
                 },
               },
               required: ['category', 'question', 'options', 'correctIndex', 'explanation'],
@@ -289,27 +352,44 @@ async function startServer() {
 
       const parsed = parseModelJson(response.text);
 
-      const options = Array.isArray(parsed.options)
+      const rawOptions = Array.isArray(parsed.options)
         ? parsed.options.slice(0, 4).map((o: unknown) => String(o))
         : [];
-      if (options.length < 4) {
+      if (rawOptions.length < 4 || !parsed.question) {
         throw new Error('Invalid quiz options generated');
       }
-      const correctIndex = Math.min(3, Math.max(0, Math.round(Number(parsed.correctIndex) || 0)));
+      const rawCorrectIdx = Math.min(3, Math.max(0, Math.round(Number(parsed.correctIndex) || 0)));
+
+      // Shuffle options server-side to guarantee balanced ก/ข/ค/ง distribution
+      const paired = rawOptions.map((text, idx) => ({
+        text,
+        isCorrect: idx === rawCorrectIdx,
+      }));
+      for (let i = paired.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [paired[i], paired[j]] = [paired[j], paired[i]];
+      }
 
       return res.json({
-        category: String(parsed.category || 'ความรู้ศิลปะและการออกแบบ'),
+        id: `ai-${chosenExam.toLowerCase()}-${Date.now()}`,
+        examCode: chosenExam,
+        era: chosenEra,
+        yearLabel:
+          chosenEra === 'past_5y'
+            ? `AI สังเคราะห์แนว ${chosenExam} (65–69)`
+            : `AI คาดการณ์ ${chosenExam} (2570–2574)`,
+        category: String(parsed.category || selectedTopic),
         question: String(parsed.question),
-        options,
-        correctIndex,
-        explanation: String(parsed.explanation || 'เก่งมาก! จำหลักข้อนี้ไว้ใช้ทำข้อสอบและจัดพอร์ตได้เลย'),
+        options: paired.map((p) => p.text),
+        correctIndex: Math.max(0, paired.findIndex((p) => p.isCorrect)),
+        explanation: String(parsed.explanation || 'จำหลักการนี้ไว้ใช้สอบ TPAT จริงได้เลย!'),
       });
     } catch (error: unknown) {
       const { status, message } = extractErrorDetails(error);
       console.error('Quiz API error:', status ?? 'no-status', message);
       const mapped = mapGeminiErrorResponse(
         error,
-        'ไม่สามารถสร้างโจทย์ควิซได้ในขณะนี้ ลองกดใหม่อีกครั้งนะ'
+        'ไม่สามารถสร้างโจทย์ควิซจาก AI ได้ในขณะนี้ ลองใช้โหมดคลังข้อสอบ TPAT4/TPAT21 ได้เลยนะ'
       );
       return res.status(mapped.status).json({ error: mapped.error });
     }
