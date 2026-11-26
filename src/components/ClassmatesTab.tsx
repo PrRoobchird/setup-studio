@@ -125,6 +125,7 @@ export const ClassmatesTab: React.FC<ClassmatesTabProps> = ({
             <StudioRoom3D
               wallThemeId={selectedStudio.wallThemeId}
               floorThemeId={selectedStudio.floorThemeId}
+              activeDoorId={selectedStudio.doorThemeId}
               placedItems={selectedStudio.placedItems}
               avatar={selectedStudio.avatar}
               readOnly

@@ -21,6 +21,7 @@ import { ShopFilter, ShopTab } from './components/ShopTab';
 import {
   AVATAR_ITEM_MAP,
   CLASSMATE_STICKER_REWARD,
+  DOOR_MAP,
   FLOOR_MAP,
   HEARTLESS_PENALTY_MS,
   INITIAL_AVATAR_CONFIG,
@@ -165,6 +166,17 @@ function loadSavedState(): StudioGameState {
         )
       : [];
 
+    const ownedDoors = Array.isArray(parsed.ownedDoors)
+      ? Array.from(new Set(['door_terracotta', ...parsed.ownedDoors]))
+      : INITIAL_GAME_STATE.ownedDoors;
+
+    const activeDoorId =
+      typeof parsed.activeDoorId === 'string' &&
+      ownedDoors.includes(parsed.activeDoorId) &&
+      DOOR_MAP[parsed.activeDoorId]
+        ? parsed.activeDoorId
+        : INITIAL_GAME_STATE.activeDoorId;
+
     const ownedWindowViews = Array.isArray(parsed.ownedWindowViews)
       ? Array.from(new Set(['city_warm', ...parsed.ownedWindowViews]))
       : INITIAL_GAME_STATE.ownedWindowViews;
@@ -206,6 +218,8 @@ function loadSavedState(): StudioGameState {
         Array.isArray(parsed.ownedFloors) && parsed.ownedFloors.length > 0
           ? parsed.ownedFloors
           : INITIAL_GAME_STATE.ownedFloors,
+      ownedDoors,
+      activeDoorId,
       ownedWindowViews,
       activeWindowViewId,
       placedItems: normalizedPlaced,
@@ -417,6 +431,12 @@ export default function App() {
   const handleSelectFloor = (floorId: string) => {
     if (!state.ownedFloors.includes(floorId)) return;
     setState((prev) => ({ ...prev, activeFloorId: floorId }));
+    playTone('click', state.soundEnabled);
+  };
+
+  const handleSelectDoor = (doorId: string) => {
+    if (!state.ownedDoors.includes(doorId)) return;
+    setState((prev) => ({ ...prev, activeDoorId: doorId }));
     playTone('click', state.soundEnabled);
   };
 
@@ -633,6 +653,31 @@ export default function App() {
       gainedFame > 0
         ? `เปลี่ยนเป็น ${floor.name} (+${gainedFame} ⭐)`
         : `เปลี่ยนเป็น ${floor.name} แล้ว!`
+    );
+  };
+
+  const handleBuyDoor = (doorId: string) => {
+    const door = DOOR_MAP[doorId];
+    if (!door || state.ownedDoors.includes(doorId) || state.coins < door.price) {
+      playTone('error', state.soundEnabled);
+      return;
+    }
+    const gainedFame = Math.max(0, Math.min(door.fameBonus, MAX_FAME - state.fame));
+    setState((prev) => {
+      if (prev.ownedDoors.includes(doorId) || prev.coins < door.price) return prev;
+      return {
+        ...prev,
+        coins: prev.coins - door.price,
+        fame: clampFame(prev.fame, door.fameBonus),
+        ownedDoors: [...prev.ownedDoors, doorId],
+        activeDoorId: doorId,
+      };
+    });
+    playTone('coin', state.soundEnabled);
+    pushToast(
+      gainedFame > 0
+        ? `เปลี่ยนประตูเป็น ${door.name} (+${gainedFame} ⭐)`
+        : `เปลี่ยนประตูเป็น ${door.name} แล้ว!`
     );
   };
 
@@ -1225,6 +1270,7 @@ export default function App() {
             onRemoveItem={handleRemoveItem}
             onSelectWall={handleSelectWall}
             onSelectFloor={handleSelectFloor}
+            onSelectDoor={handleSelectDoor}
             onSelectWindowView={handleSelectWindowView}
             onUpdateAvatar={handleUpdateAvatar}
             onSelectStarterGender={handleSelectStarterGender}
@@ -1265,6 +1311,8 @@ export default function App() {
             onSelectWall={handleSelectWall}
             onBuyFloor={handleBuyFloor}
             onSelectFloor={handleSelectFloor}
+            onBuyDoor={handleBuyDoor}
+            onSelectDoor={handleSelectDoor}
             onBuyWindowView={handleBuyWindowView}
             onSelectWindowView={handleSelectWindowView}
             onBuyAvatarItem={handleBuyAvatarItem}

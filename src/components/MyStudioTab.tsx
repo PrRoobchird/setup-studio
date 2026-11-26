@@ -6,6 +6,7 @@ import {
   Check,
   ChevronLeft,
   ChevronRight,
+  DoorOpen,
   Flower2,
   Frame,
   Layers,
@@ -26,6 +27,7 @@ import {
   X,
 } from 'lucide-react';
 import {
+  DOOR_THEMES,
   FLOOR_THEMES,
   ITEM_MAP,
   MAX_FAME,
@@ -51,6 +53,7 @@ import {
   WallFrameType,
 } from '../types/studio';
 import { AvatarWardrobeModal } from './AvatarWardrobeModal';
+import { DoorThumbnail } from './DoorThumbnail';
 import { ItemThumbnail } from './ItemThumbnail';
 import { PetCareModal } from './PetCareModal';
 import { PetIllustration } from './PetIllustration';
@@ -66,6 +69,7 @@ interface MyStudioTabProps {
   onRemoveItem: (instanceId: string) => void;
   onSelectWall: (wallId: string) => void;
   onSelectFloor: (floorId: string) => void;
+  onSelectDoor: (doorId: string) => void;
   onSelectWindowView: (viewId: string) => void;
   onUpdateAvatar: (patch: Partial<AvatarConfig>) => void;
   onSelectStarterGender: (gender: AvatarGender) => void;
@@ -79,7 +83,7 @@ interface MyStudioTabProps {
   onGoToCritique: () => void;
 }
 
-type DrawerCategory = 'all' | ItemCategory | 'walls' | 'floors' | 'views';
+type DrawerCategory = 'all' | ItemCategory | 'walls' | 'floors' | 'doors' | 'views';
 
 const RAIL_CATEGORIES: {
   id: DrawerCategory;
@@ -93,6 +97,7 @@ const RAIL_CATEGORIES: {
   { id: 'petgear', label: 'ของใช้สัตว์เลี้ยง', icon: <PawPrint className="w-4 h-4" /> },
   { id: 'walls', label: 'สีผนัง', icon: <Paintbrush className="w-4 h-4" /> },
   { id: 'floors', label: 'พื้นห้อง', icon: <Layers className="w-4 h-4" /> },
+  { id: 'doors', label: 'ประตูห้อง', icon: <DoorOpen className="w-4 h-4" /> },
   { id: 'views', label: 'วิวหน้าต่าง', icon: <Mountain className="w-4 h-4" /> },
 ];
 
@@ -104,6 +109,7 @@ export const MyStudioTab: React.FC<MyStudioTabProps> = ({
   onRemoveItem,
   onSelectWall,
   onSelectFloor,
+  onSelectDoor,
   onSelectWindowView,
   onUpdateAvatar,
   onSelectStarterGender,
@@ -307,6 +313,7 @@ export const MyStudioTab: React.FC<MyStudioTabProps> = ({
           <StudioRoom3D
             wallThemeId={state.activeWallId}
             floorThemeId={state.activeFloorId}
+            activeDoorId={state.activeDoorId}
             activeWindowViewId={state.activeWindowViewId}
             placedItems={state.placedItems}
             pets={state.pets}
@@ -478,6 +485,42 @@ export const MyStudioTab: React.FC<MyStudioTabProps> = ({
                             'ใช้'
                           ) : (
                             `${view.price}💡`
+                          )}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : drawerCategory === 'doors' ? (
+                <div className="space-y-1.5">
+                  {DOOR_THEMES.filter((d) => !d.isSeasonal || holidayEvent.isActive || state.ownedDoors.includes(d.id)).map((door) => {
+                    const isOwned = state.ownedDoors.includes(door.id);
+                    const isActive = state.activeDoorId === door.id;
+
+                    return (
+                      <button
+                        key={door.id}
+                        type="button"
+                        onClick={() =>
+                          isOwned ? onSelectDoor(door.id) : onGoToShop('doors')
+                        }
+                        className={`w-full flex items-center justify-between gap-2 px-2.5 py-1.5 rounded-xl border text-left text-xs transition-colors cursor-pointer ${
+                          isActive
+                            ? 'bg-white/20 border-[#FDE68A] text-white'
+                            : 'bg-black/25 border-white/10 text-white/90 hover:bg-black/40'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <DoorThumbnail doorId={door.id} className="w-6 h-8 rounded shrink-0" />
+                          <span className="truncate">{door.name}</span>
+                        </div>
+                        <span className="text-[10px] shrink-0">
+                          {isActive ? (
+                            <Check className="w-3.5 h-3.5 text-[#6EE7B7]" />
+                          ) : isOwned ? (
+                            'ใช้'
+                          ) : (
+                            `${door.price}💡`
                           )}
                         </span>
                       </button>
@@ -840,7 +883,15 @@ export const MyStudioTab: React.FC<MyStudioTabProps> = ({
                 คลังอุปกรณ์ในสตูดิโอของฉัน
               </h2>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => onGoToShop('doors')}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 min-h-[36px] rounded-xl border border-[#DED5C5] bg-[#FAF8F4] text-xs font-medium text-[#1F1D1A] hover:bg-[#F1ECE2] cursor-pointer"
+              >
+                <DoorOpen className="w-3.5 h-3.5 text-[#B45309]" />
+                เปลี่ยนประตูห้อง
+              </button>
               <button
                 type="button"
                 onClick={() => onGoToShop('views')}

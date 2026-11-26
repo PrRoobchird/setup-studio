@@ -2,6 +2,7 @@ import {
   AvatarConfig,
   AvatarItemDef,
   BlushStyleId,
+  DoorTheme,
   EyeStyleId,
   EyebrowStyleId,
   FloorTheme,
@@ -655,6 +656,102 @@ export const FLOOR_THEMES: FloorTheme[] = [
     tileB: '#CFD4DA',
     borderColor: '#B3B9C1',
     swatchColor: '#D4D8DE',
+  },
+];
+
+export const DOOR_THEMES: DoorTheme[] = [
+  {
+    id: 'door_terracotta',
+    name: 'ประตูอิฐดินเผาขอบครีม (คลาสสิก)',
+    price: 0,
+    fameBonus: 0,
+    description: 'ประตูสีส้มดินเผาอบอุ่นตัดกรอบครีมสไตล์ Setup Dream Room เข้ากับผนังครีมนมและพีช',
+    style: 'classic_panel',
+    frameColor: '#F6F0E6',
+    leafColor: '#D9482B',
+    accentColor: '#B7371E',
+    knobColor: '#F3E8D6',
+    swatchColor: '#D9482B',
+  },
+  {
+    id: 'door_ivory_molding',
+    name: 'ประตูบัวครีมงาช้างแกลเลอรี',
+    price: 180,
+    fameBonus: 2,
+    description: 'ประตูสีครีมงาช้างตีคิ้วบัวคลาสสิก พร้อมมือจับก้านโยกทองเหลือง เหมาะกับห้องแกลเลอรีคลีน',
+    style: 'ivory_molding',
+    frameColor: '#EBE4D8',
+    leafColor: '#FAF6EE',
+    accentColor: '#DED6C8',
+    knobColor: '#C9A25B',
+    swatchColor: '#F5EFE4',
+  },
+  {
+    id: 'door_oak_slat',
+    name: 'ประตูไม้โอ๊คระแนงสไตล์ญี่ปุ่น',
+    price: 220,
+    fameBonus: 2,
+    description: 'ประตูไม้โอ๊คเรียงระแนงตั้งสไตล์มูจิ-ญี่ปุ่น พร้อมมือจับแท่งยาวสีดำด้าน เข้ากับพื้นไม้ฮันนี่',
+    style: 'nordic_slat',
+    frameColor: '#B68556',
+    leafColor: '#CFA06E',
+    accentColor: '#9C6C42',
+    knobColor: '#2B2724',
+    swatchColor: '#CFA06E',
+  },
+  {
+    id: 'door_sage_glass',
+    name: 'ประตูเขียวเซจช่องกระจกใส',
+    price: 260,
+    fameBonus: 3,
+    description: 'ประตูสีเขียวมัทฉะเซจเจาะช่องกระจกสี่เหลี่ยมด้านบน ช่วยให้แสงธรรมชาติผ่านเข้ามาในห้อง',
+    style: 'sage_glass',
+    frameColor: '#F6F2EA',
+    leafColor: '#7EA68A',
+    accentColor: '#DCEEF2',
+    knobColor: '#D2B06E',
+    swatchColor: '#7EA68A',
+  },
+  {
+    id: 'door_arch_walnut',
+    name: 'ประตูซุ้มโค้งไม้วอลนัทอุ่น',
+    price: 300,
+    fameBonus: 3,
+    description: 'ซุ้มประตูทรงโค้งมนละมุนสไตล์สตูดิโออาร์ตเมดิเตอร์เรเนียน เข้ากับพื้นวอลนัทและผนังพีช',
+    style: 'arch_mediterranean',
+    frameColor: '#F2EAE0',
+    leafColor: '#9D6D47',
+    accentColor: '#7A5030',
+    knobColor: '#E5C687',
+    swatchColor: '#9D6D47',
+  },
+  {
+    id: 'door_loft_steel',
+    name: 'ประตูกระจกกรอบเหล็กดำลอฟท์',
+    price: 340,
+    fameBonus: 4,
+    description: 'ประตูกระจกตารางเฟรมเหล็กสีดำด้านสไตล์อินดัสเทรียลลอฟท์ เข้ากับพื้นปูนเปลือยและห้องฟ้า',
+    style: 'industrial_loft',
+    frameColor: '#282E36',
+    leafColor: '#363D47',
+    accentColor: '#C2DCEC',
+    knobColor: '#94A3B8',
+    swatchColor: '#363D47',
+  },
+  {
+    id: 'door_xmas_pine',
+    name: 'ประตูสนเขียว & พวงมาลัยคริสต์มาส',
+    price: 320,
+    fameBonus: 4,
+    description: 'ประตูสีเขียวต้นสนตกแต่งพวงมาลัยฮอลลี่ โบว์แดง และกระดิ่งทอง ต้อนรับเทศกาลคริสต์มาส-ปีใหม่',
+    style: 'xmas_wreath',
+    frameColor: '#FAF5EC',
+    leafColor: '#235D3F',
+    accentColor: '#DC2626',
+    knobColor: '#FACC15',
+    swatchColor: '#235D3F',
+    isSeasonal: true,
+    eventTag: 'คริสต์มาส & ปีใหม่ · ถึง 31 ธ.ค.',
   },
 ];
 
@@ -1408,6 +1505,10 @@ export const FLOOR_MAP: Record<string, FloorTheme> = Object.fromEntries(
   FLOOR_THEMES.map((f) => [f.id, f])
 );
 
+export const DOOR_MAP: Record<string, DoorTheme> = Object.fromEntries(
+  DOOR_THEMES.map((d) => [d.id, d])
+);
+
 export const WINDOW_VIEW_MAP: Record<string, WindowViewTheme> = Object.fromEntries(
   WINDOW_VIEW_THEMES.map((v) => [v.id, v])
 );
@@ -1548,9 +1649,11 @@ export const INITIAL_GAME_STATE: StudioGameState = {
   },
   ownedWalls: ['warm_ivory'],
   ownedFloors: ['japanese_oak'],
+  ownedDoors: ['door_terracotta'],
   ownedWindowViews: ['city_warm'],
   activeWallId: 'warm_ivory',
   activeFloorId: 'japanese_oak',
+  activeDoorId: 'door_terracotta',
   activeWindowViewId: 'city_warm',
   placedItems: [
     { instanceId: 'starter-1', itemId: 'drafting_table', x: 1, y: 0, rotationStep: 0 },

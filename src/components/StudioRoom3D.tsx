@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import {
+  DOOR_MAP,
   PET_BREED_MAP,
   WALL_MAP,
   getOccupiedTileSet,
@@ -33,6 +34,7 @@ import {
 interface StudioRoom3DProps {
   wallThemeId: string;
   floorThemeId: string;
+  activeDoorId?: string;
   activeWindowViewId?: string;
   placedItems: PlacedItem[];
   pets?: OwnedPet[];
@@ -60,7 +62,7 @@ interface StudioRoom3DProps {
 }
 
 const CELL_SIZE = 1.15;
-const WALL_HEIGHT = 3.15;
+const WALL_HEIGHT = 1.95; // Proportioned ~1.9x avatar height (~1.03) so room, door, and furniture match character scale
 const WALL_THICK = 0.22;
 const SLAB_THICK = 0.34;
 
@@ -107,6 +109,7 @@ function findAvatarTile(
 export const StudioRoom3D: React.FC<StudioRoom3DProps> = ({
   wallThemeId,
   floorThemeId,
+  activeDoorId = 'door_terracotta',
   activeWindowViewId = 'city_warm',
   placedItems,
   pets = [],
@@ -165,6 +168,7 @@ export const StudioRoom3D: React.FC<StudioRoom3DProps> = ({
     camera: THREE.OrthographicCamera;
     controls: OrbitControls;
     shellGroup: THREE.Group;
+    doorGroup: THREE.Group;
     wallFramesGroup: THREE.Group;
     furnitureGroup: THREE.Group;
     petsGroup: THREE.Group;
@@ -230,7 +234,7 @@ export const StudioRoom3D: React.FC<StudioRoom3DProps> = ({
     scene.environmentIntensity = 0.34;
     pmrem.dispose();
 
-    const initialFrustum = callbacksRef.current.studioExpanded ? 6.0 : 4.55;
+    const initialFrustum = callbacksRef.current.studioExpanded ? 5.75 : 4.25;
     const aspect = width / height;
     const camera = new THREE.OrthographicCamera(
       -initialFrustum * aspect,
@@ -240,11 +244,11 @@ export const StudioRoom3D: React.FC<StudioRoom3DProps> = ({
       0.1,
       70
     );
-    camera.position.set(12.2, 10.4, 12.2);
-    camera.lookAt(0, 1.05, 0);
+    camera.position.set(11.8, 9.6, 11.8);
+    camera.lookAt(0, 0.78, 0);
 
     const controls = new OrbitControls(camera, renderer.domElement);
-    controls.target.set(0, 1.05, 0);
+    controls.target.set(0, 0.78, 0);
     controls.enablePan = false;
     controls.enableDamping = !isSoftwareGl;
     controls.dampingFactor = 0.08;
@@ -291,6 +295,7 @@ export const StudioRoom3D: React.FC<StudioRoom3DProps> = ({
     scene.add(shadowCatcher);
 
     const shellGroup = new THREE.Group();
+    const doorGroup = new THREE.Group();
     const wallFramesGroup = new THREE.Group();
     const furnitureGroup = new THREE.Group();
     const petsGroup = new THREE.Group();
@@ -300,6 +305,7 @@ export const StudioRoom3D: React.FC<StudioRoom3DProps> = ({
     const snowGroup = new THREE.Group();
 
     scene.add(shellGroup);
+    scene.add(doorGroup);
     scene.add(wallFramesGroup);
     scene.add(furnitureGroup);
     scene.add(petsGroup);
@@ -356,6 +362,7 @@ export const StudioRoom3D: React.FC<StudioRoom3DProps> = ({
       camera,
       controls,
       shellGroup,
+      doorGroup,
       wallFramesGroup,
       furnitureGroup,
       petsGroup,
@@ -655,7 +662,7 @@ export const StudioRoom3D: React.FC<StudioRoom3DProps> = ({
     const halfSpan = roomSpan / 2;
 
     // Update camera frustum smoothly for 5x5 vs 7x7 studio
-    h.frustum = studioExpanded ? 6.0 : 4.55;
+    h.frustum = studioExpanded ? 5.75 : 4.25;
     h.halfSpan = halfSpan;
     const w = Math.max(container.clientWidth, 260);
     const ht = Math.max(container.clientHeight, 260);
@@ -686,17 +693,17 @@ export const StudioRoom3D: React.FC<StudioRoom3DProps> = ({
     snowAttr.needsUpdate = true;
 
     // Fit exterior window view backdrop cleanly behind the window cutout so it never protrudes outside the walls
-    const winLeft = studioExpanded ? -0.35 : -0.75;
-    const winRight = studioExpanded ? 2.35 : 1.45;
-    const winBot = 0.95;
-    const winTop = 2.55;
+    const winLeft = studioExpanded ? -0.35 : -0.72;
+    const winRight = studioExpanded ? 2.35 : 1.42;
+    const winBot = 0.62;
+    const winTop = 1.66;
     const winW = winRight - winLeft;
     const winH = winTop - winBot;
     const winCx = (winLeft + winRight) / 2;
     const winCy = (winBot + winTop) / 2;
     const wz = -halfSpan - WALL_THICK / 2;
     h.skyBackdrop.geometry.dispose();
-    h.skyBackdrop.geometry = new THREE.PlaneGeometry(winW + 0.28, winH + 0.28);
+    h.skyBackdrop.geometry = new THREE.PlaneGeometry(winW + 0.22, winH + 0.22);
     h.skyBackdrop.position.set(winCx, winCy, wz - WALL_THICK / 2 - 0.05);
 
     // Rebuild interactive tile overlays (5x5 or 7x7)
@@ -740,8 +747,6 @@ export const StudioRoom3D: React.FC<StudioRoom3DProps> = ({
     const slabBump = createPlasticineBumpTexture(3, 3);
     const wallBump = createPlasticineBumpTexture(3, 3);
     const trimBump = createPlasticineBumpTexture(2, 2);
-    const doorFrameBump = createPlasticineBumpTexture(2, 2);
-    const doorLeafBump = createPlasticineBumpTexture(2, 2);
 
     const floorMat = new THREE.MeshStandardMaterial({
       map: floorTex,
@@ -795,54 +800,24 @@ export const StudioRoom3D: React.FC<StudioRoom3DProps> = ({
     leftCap.position.set(-halfSpan - WALL_THICK / 2, WALL_HEIGHT + 0.03, -WALL_THICK / 2);
     h.shellGroup.add(leftCap);
 
-    // Terracotta-red Clay Door on Left Wall
-    const doorFrameMat = new THREE.MeshStandardMaterial({
-      color: 0xf6f0e6,
-      ...(doorFrameBump ? { bumpMap: doorFrameBump, bumpScale: 0.009 } : {}),
-      roughness: 0.8,
-    });
-    const doorLeafMat = new THREE.MeshStandardMaterial({
-      color: 0xd9482b,
-      ...(doorLeafBump ? { bumpMap: doorLeafBump, bumpScale: 0.011 } : {}),
-      roughness: 0.78,
-    });
-    const doorKnobMat = new THREE.MeshStandardMaterial({ color: 0xf3e8d6, roughness: 0.28, metalness: 0.45 });
-    const doorZ = studioExpanded ? 2.45 : 1.55;
-
-    const doorFrame = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.25, 1.25), doorFrameMat);
-    doorFrame.position.set(-halfSpan + 0.03, 1.12, doorZ);
-    doorFrame.castShadow = true;
-    doorFrame.receiveShadow = true;
-    h.shellGroup.add(doorFrame);
-
-    const doorLeaf = new THREE.Mesh(new THREE.BoxGeometry(0.06, 2.12, 1.08), doorLeafMat);
-    doorLeaf.position.set(-halfSpan + 0.055, 1.06, doorZ);
-    doorLeaf.castShadow = true;
-    doorLeaf.receiveShadow = true;
-    h.shellGroup.add(doorLeaf);
-
-    const doorKnob = new THREE.Mesh(new THREE.SphereGeometry(0.045, 12, 12), doorKnobMat);
-    doorKnob.position.set(-halfSpan + 0.1, 1.0, doorZ - 0.4);
-    h.shellGroup.add(doorKnob);
-
     // Starter Bauhaus Poster on Left Wall (hidden if player owns the customizable portrait frame in that spot)
     if (!ownedWallFrames.includes('portrait')) {
       const artTex = createBauhausArtTexture(maxAniso);
       const posterZ = studioExpanded ? -1.4 : -0.75;
       const frameBox = new THREE.Mesh(
-        new THREE.BoxGeometry(0.05, 1.18, 0.92),
+        new THREE.BoxGeometry(0.05, 0.86, 0.68),
         new THREE.MeshStandardMaterial({ color: 0x3a322e, roughness: 0.5 })
       );
-      frameBox.position.set(-halfSpan + 0.025, 1.95, posterZ);
+      frameBox.position.set(-halfSpan + 0.025, 1.18, posterZ);
       frameBox.castShadow = true;
       h.shellGroup.add(frameBox);
 
       const artPlane = new THREE.Mesh(
-        new THREE.PlaneGeometry(0.8, 1.06),
+        new THREE.PlaneGeometry(0.58, 0.76),
         new THREE.MeshStandardMaterial({ map: artTex, roughness: 0.72 })
       );
       artPlane.rotation.y = Math.PI / 2;
-      artPlane.position.set(-halfSpan + 0.055, 1.95, posterZ);
+      artPlane.position.set(-halfSpan + 0.055, 1.18, posterZ);
       h.shellGroup.add(artPlane);
     }
 
@@ -901,9 +876,24 @@ export const StudioRoom3D: React.FC<StudioRoom3DProps> = ({
     hMullion.castShadow = true;
     h.shellGroup.add(hMullion);
 
-    const baseL = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.11, roomSpan), trimMat);
-    baseL.position.set(-halfSpan + 0.02, 0.055, 0);
-    h.shellGroup.add(baseL);
+    // Split Left Baseboard cleanly around the Door opening to prevent Z-fighting
+    const doorCenterZ = studioExpanded ? 2.45 : 1.55;
+    const doorCutMin = doorCenterZ - 0.5;
+    const doorCutMax = doorCenterZ + 0.5;
+    const zStart = -halfSpan;
+    const zEnd = halfSpan;
+    if (doorCutMin > zStart + 0.02) {
+      const lenBefore = doorCutMin - zStart;
+      const baseL1 = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.11, lenBefore), trimMat);
+      baseL1.position.set(-halfSpan + 0.02, 0.055, zStart + lenBefore / 2);
+      h.shellGroup.add(baseL1);
+    }
+    if (zEnd > doorCutMax + 0.02) {
+      const lenAfter = zEnd - doorCutMax;
+      const baseL2 = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.11, lenAfter), trimMat);
+      baseL2.position.set(-halfSpan + 0.02, 0.055, doorCutMax + lenAfter / 2);
+      h.shellGroup.add(baseL2);
+    }
 
     // Butt-joined cleanly against baseL at corner
     const baseR = new THREE.Mesh(new THREE.BoxGeometry(roomSpan - 0.04, 0.11, 0.04), trimMat);
@@ -912,6 +902,232 @@ export const StudioRoom3D: React.FC<StudioRoom3DProps> = ({
 
     h.needsRender = true;
   }, [wallThemeId, floorThemeId, studioExpanded, ownedWallFrames]);
+
+  // 2b. Rebuild Customizable 3D Studio Door on Left Wall
+  useEffect(() => {
+    const h = handlesRef.current;
+    if (!h) return;
+
+    disposeObject3D(h.doorGroup);
+    h.doorGroup.clear();
+
+    const gridSize = getGridSize(studioExpanded);
+    const halfSpan = (gridSize * CELL_SIZE) / 2;
+    const doorZ = studioExpanded ? 2.45 : 1.55;
+    const doorTheme = DOOR_MAP[activeDoorId] ?? DOOR_MAP.door_terracotta;
+
+    const frameBump = createPlasticineBumpTexture(2, 2);
+    const leafBump = createPlasticineBumpTexture(2, 2);
+
+    const frameMat = new THREE.MeshStandardMaterial({
+      color: doorTheme.frameColor,
+      ...(frameBump ? { bumpMap: frameBump, bumpScale: 0.008 } : {}),
+      roughness: doorTheme.style === 'industrial_loft' ? 0.42 : 0.78,
+      metalness: doorTheme.style === 'industrial_loft' ? 0.35 : 0.02,
+    });
+    const leafMat = new THREE.MeshStandardMaterial({
+      color: doorTheme.leafColor,
+      ...(leafBump ? { bumpMap: leafBump, bumpScale: 0.01 } : {}),
+      roughness: doorTheme.style === 'industrial_loft' ? 0.48 : 0.76,
+      metalness: doorTheme.style === 'industrial_loft' ? 0.28 : 0.02,
+    });
+    const accentMat = new THREE.MeshStandardMaterial({
+      color: doorTheme.accentColor,
+      roughness: 0.72,
+      metalness: 0.04,
+    });
+    const knobMat = new THREE.MeshStandardMaterial({
+      color: doorTheme.knobColor,
+      roughness: 0.28,
+      metalness: 0.52,
+    });
+
+    const doorRoot = new THREE.Group();
+    doorRoot.position.set(-halfSpan, 0, doorZ);
+
+    const addDoorMesh = (
+      geo: THREE.BufferGeometry,
+      mat: THREE.Material,
+      x: number,
+      y: number,
+      z: number,
+      rot?: [number, number, number],
+      castShadow = true
+    ) => {
+      const m = new THREE.Mesh(geo, mat);
+      m.position.set(x, y, z);
+      if (rot) m.rotation.set(rot[0], rot[1], rot[2]);
+      m.castShadow = castShadow;
+      m.receiveShadow = true;
+      doorRoot.add(m);
+      return m;
+    };
+
+    const doorH = 1.52;
+    const leafH = 1.44;
+    const leafW = 0.82;
+
+    if (doorTheme.style === 'arch_mediterranean') {
+      const makeArchGeo = (halfW: number, straightH: number, depth: number, bevel: number) => {
+        const shape = new THREE.Shape();
+        shape.moveTo(-halfW, 0);
+        shape.lineTo(halfW, 0);
+        shape.lineTo(halfW, straightH);
+        shape.absarc(0, straightH, halfW, 0, Math.PI, false);
+        shape.lineTo(-halfW, 0);
+        const geo = new THREE.ExtrudeGeometry(shape, {
+          depth,
+          bevelEnabled: true,
+          bevelThickness: bevel,
+          bevelSize: bevel,
+          bevelSegments: 3,
+          curveSegments: 22,
+        });
+        geo.rotateY(Math.PI / 2);
+        return geo;
+      };
+
+      // Outer cream arch casing
+      addDoorMesh(makeArchGeo(0.46, 1.06, 0.045, 0.008), frameMat, 0.006, 0, 0);
+      // Recessed walnut arch leaf
+      addDoorMesh(makeArchGeo(0.39, 1.02, 0.042, 0.006), leafMat, 0.032, 0, 0);
+      // Decorative inner arch molding strip
+      addDoorMesh(makeArchGeo(0.28, 0.9, 0.015, 0.004), accentMat, 0.068, 0.07, 0);
+      // Brass ring pull + plate
+      addDoorMesh(new THREE.CylinderGeometry(0.03, 0.03, 0.015, 14), knobMat, 0.082, 0.68, -0.27, [0, 0, Math.PI / 2]);
+      addDoorMesh(new THREE.TorusGeometry(0.034, 0.008, 8, 18), knobMat, 0.094, 0.65, -0.27, [0, Math.PI / 2, 0]);
+    } else {
+      // Standard architectural perimeter casing (left/right jambs + top header + recessed leaf)
+      addDoorMesh(new THREE.BoxGeometry(0.075, doorH, 0.08), frameMat, 0.038, doorH / 2, -0.445);
+      addDoorMesh(new THREE.BoxGeometry(0.075, doorH, 0.08), frameMat, 0.038, doorH / 2, 0.445);
+      addDoorMesh(new THREE.BoxGeometry(0.08, 0.085, 0.97), frameMat, 0.04, doorH - 0.0425, 0);
+
+      if (doorTheme.style === 'industrial_loft') {
+        // Steel perimeter leaf rails + 6-pane glass
+        addDoorMesh(new THREE.BoxGeometry(0.045, leafH, 0.075), leafMat, 0.03, leafH / 2, -0.372);
+        addDoorMesh(new THREE.BoxGeometry(0.045, leafH, 0.075), leafMat, 0.03, leafH / 2, 0.372);
+        addDoorMesh(new THREE.BoxGeometry(0.045, 0.13, leafW), leafMat, 0.03, 0.065, 0);
+        addDoorMesh(new THREE.BoxGeometry(0.045, 0.085, leafW), leafMat, 0.03, leafH - 0.0425, 0);
+
+        // Glass sheet
+        const glassMat = new THREE.MeshStandardMaterial({
+          color: nightMode ? 0x3b4d6b : doorTheme.accentColor,
+          emissive: nightMode ? 0x1e293b : 0x89b6d4,
+          emissiveIntensity: nightMode ? 0.35 : 0.15,
+          transparent: true,
+          opacity: 0.58,
+          roughness: 0.15,
+          metalness: 0.1,
+          depthWrite: false,
+        });
+        addDoorMesh(new THREE.BoxGeometry(0.016, 1.23, 0.68), glassMat, 0.03, 0.745, 0, undefined, false);
+
+        // Steel muntin grid (1 vertical, 2 horizontal)
+        addDoorMesh(new THREE.BoxGeometry(0.042, 1.25, 0.036), leafMat, 0.032, 0.745, 0);
+        addDoorMesh(new THREE.BoxGeometry(0.042, 0.036, 0.7), leafMat, 0.032, 0.54, 0);
+        addDoorMesh(new THREE.BoxGeometry(0.042, 0.036, 0.7), leafMat, 0.032, 0.96, 0);
+
+        // Vertical steel pull bar
+        addDoorMesh(new THREE.CylinderGeometry(0.014, 0.014, 0.34, 10), knobMat, 0.076, 0.72, -0.3);
+        addDoorMesh(new THREE.CylinderGeometry(0.01, 0.01, 0.038, 8), knobMat, 0.058, 0.85, -0.3, [0, 0, Math.PI / 2]);
+        addDoorMesh(new THREE.CylinderGeometry(0.01, 0.01, 0.038, 8), knobMat, 0.058, 0.59, -0.3, [0, 0, Math.PI / 2]);
+      } else {
+        // Solid door leaf base
+        addDoorMesh(new THREE.BoxGeometry(0.042, leafH, leafW), leafMat, 0.026, leafH / 2, 0);
+
+        if (doorTheme.style === 'classic_panel') {
+          addDoorMesh(new THREE.BoxGeometry(0.018, 0.52, 0.58), accentMat, 0.048, 1.04, 0);
+          addDoorMesh(new THREE.BoxGeometry(0.018, 0.56, 0.58), accentMat, 0.048, 0.42, 0);
+          addDoorMesh(new THREE.SphereGeometry(0.036, 12, 12), knobMat, 0.078, 0.68, -0.3);
+        } else if (doorTheme.style === 'ivory_molding') {
+          // Double stepped classic panels + brass lever handle
+          addDoorMesh(new THREE.BoxGeometry(0.016, 0.54, 0.6), accentMat, 0.047, 1.04, 0);
+          addDoorMesh(new THREE.BoxGeometry(0.022, 0.44, 0.5), leafMat, 0.051, 1.04, 0);
+          addDoorMesh(new THREE.BoxGeometry(0.016, 0.56, 0.6), accentMat, 0.047, 0.42, 0);
+          addDoorMesh(new THREE.BoxGeometry(0.022, 0.46, 0.5), leafMat, 0.051, 0.42, 0);
+          // Lever handle
+          addDoorMesh(new THREE.CylinderGeometry(0.022, 0.022, 0.018, 12), knobMat, 0.056, 0.68, -0.3, [0, 0, Math.PI / 2]);
+          addDoorMesh(new THREE.BoxGeometry(0.016, 0.022, 0.11), knobMat, 0.072, 0.68, -0.255);
+        } else if (doorTheme.style === 'nordic_slat') {
+          // 7 raised vertical oak slats + black bar handle
+          for (let i = -3; i <= 3; i++) {
+            addDoorMesh(
+              new THREE.BoxGeometry(0.018, leafH - 0.05, 0.074),
+              i % 2 === 0 ? accentMat : leafMat,
+              0.049,
+              leafH / 2,
+              i * 0.106
+            );
+          }
+          addDoorMesh(new THREE.CylinderGeometry(0.013, 0.013, 0.36, 10), knobMat, 0.078, 0.72, -0.3);
+          addDoorMesh(new THREE.CylinderGeometry(0.01, 0.01, 0.038, 8), knobMat, 0.06, 0.86, -0.3, [0, 0, Math.PI / 2]);
+          addDoorMesh(new THREE.CylinderGeometry(0.01, 0.01, 0.038, 8), knobMat, 0.06, 0.58, -0.3, [0, 0, Math.PI / 2]);
+        } else if (doorTheme.style === 'sage_glass') {
+          // Upper 4-pane bright window + lower raised panel
+          const glassMat = new THREE.MeshStandardMaterial({
+            color: nightMode ? 0x47668a : doorTheme.accentColor,
+            emissive: nightMode ? 0x2a4365 : 0xbce3ed,
+            emissiveIntensity: nightMode ? 0.4 : 0.2,
+            roughness: 0.18,
+            metalness: 0.05,
+          });
+          addDoorMesh(new THREE.BoxGeometry(0.016, 0.58, 0.6), frameMat, 0.048, 1.03, 0);
+          addDoorMesh(new THREE.BoxGeometry(0.014, 0.5, 0.52), glassMat, 0.053, 1.03, 0, undefined, false);
+          addDoorMesh(new THREE.BoxGeometry(0.022, 0.52, 0.038), frameMat, 0.058, 1.03, 0);
+          addDoorMesh(new THREE.BoxGeometry(0.022, 0.038, 0.52), frameMat, 0.058, 1.03, 0);
+          // Lower wainscot
+          addDoorMesh(new THREE.BoxGeometry(0.018, 0.46, 0.58), frameMat, 0.048, 0.4, 0);
+          addDoorMesh(new THREE.SphereGeometry(0.034, 12, 12), knobMat, 0.076, 0.68, -0.31);
+        } else if (doorTheme.style === 'xmas_wreath') {
+          const darkPineMat = new THREE.MeshStandardMaterial({ color: 0x18452e, roughness: 0.78 });
+          const pineWreathMat = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.8 });
+          const goldOrbMat = new THREE.MeshStandardMaterial({
+            color: 0xfacc15,
+            emissive: nightMode ? 0xf59e0b : 0x000000,
+            emissiveIntensity: nightMode ? 0.75 : 0,
+            roughness: 0.25,
+            metalness: 0.4,
+          });
+          const redOrbMat = new THREE.MeshStandardMaterial({
+            color: 0xdc2626,
+            emissive: nightMode ? 0xb91c1c : 0x000000,
+            emissiveIntensity: nightMode ? 0.55 : 0,
+            roughness: 0.35,
+          });
+          addDoorMesh(new THREE.BoxGeometry(0.016, 0.54, 0.58), darkPineMat, 0.048, 1.04, 0);
+          addDoorMesh(new THREE.BoxGeometry(0.016, 0.54, 0.58), darkPineMat, 0.048, 0.42, 0);
+          // 3D Christmas wreath hanging on upper panel
+          addDoorMesh(
+            new THREE.TorusGeometry(0.165, 0.044, 10, 22),
+            pineWreathMat,
+            0.084,
+            1.05,
+            0,
+            [0, Math.PI / 2, 0]
+          );
+          // Red ribbon bow at top of wreath
+          addDoorMesh(new THREE.BoxGeometry(0.028, 0.052, 0.115), accentMat, 0.108, 1.21, 0);
+          addDoorMesh(new THREE.BoxGeometry(0.022, 0.09, 0.038), accentMat, 0.102, 1.15, -0.04, [0.3, 0, 0]);
+          addDoorMesh(new THREE.BoxGeometry(0.022, 0.09, 0.038), accentMat, 0.102, 1.15, 0.04, [-0.3, 0, 0]);
+          // Wreath ornaments
+          for (let i = 0; i < 6; i++) {
+            const ang = (i / 6) * Math.PI * 2 + 0.4;
+            addDoorMesh(
+              new THREE.SphereGeometry(0.022, 10, 10),
+              i % 2 === 0 ? goldOrbMat : redOrbMat,
+              0.116,
+              1.05 + Math.sin(ang) * 0.16,
+              Math.cos(ang) * 0.16
+            );
+          }
+          addDoorMesh(new THREE.SphereGeometry(0.035, 12, 12), knobMat, 0.078, 0.68, -0.3);
+        }
+      }
+    }
+
+    h.doorGroup.add(doorRoot);
+    h.needsRender = true;
+  }, [activeDoorId, studioExpanded, nightMode]);
 
   // 3. Rebuild Custom Wall-Mounted Picture Frames (Horizontal & Vertical)
   useEffect(() => {
@@ -930,16 +1146,16 @@ export const StudioRoom3D: React.FC<StudioRoom3DProps> = ({
 
     // Horizontal (Landscape) Frame on Right Wall (to the left of the window)
     if (ownedWallFrames.includes('landscape')) {
-      const fx = studioExpanded ? -2.25 : -1.82;
+      const fx = studioExpanded ? -2.25 : -1.8;
       const fz = -halfSpan + 0.03;
-      const fy = 1.9;
+      const fy = 1.18;
 
       const frameGroup = new THREE.Group();
       frameGroup.position.set(fx, fy, fz);
       frameGroup.userData.wallFrameType = 'landscape';
 
       const woodMat = new THREE.MeshStandardMaterial({ color: 0xa6784b, roughness: 0.48 });
-      const outer = new THREE.Mesh(new THREE.BoxGeometry(1.44, 1.0, 0.06), woodMat);
+      const outer = new THREE.Mesh(new THREE.BoxGeometry(1.12, 0.76, 0.06), woodMat);
       outer.castShadow = true;
       outer.userData.wallFrameType = 'landscape';
       frameGroup.add(outer);
@@ -951,7 +1167,7 @@ export const StudioRoom3D: React.FC<StudioRoom3DProps> = ({
         requestRender
       );
       const artMesh = new THREE.Mesh(
-        new THREE.PlaneGeometry(1.3, 0.86),
+        new THREE.PlaneGeometry(1.0, 0.64),
         new THREE.MeshStandardMaterial({ map: artTex, roughness: 0.65 })
       );
       artMesh.position.z = 0.034;
@@ -965,7 +1181,7 @@ export const StudioRoom3D: React.FC<StudioRoom3DProps> = ({
     if (ownedWallFrames.includes('portrait')) {
       const fx = -halfSpan + 0.03;
       const fz = studioExpanded ? -1.4 : -0.75;
-      const fy = 1.95;
+      const fy = 1.18;
 
       const frameGroup = new THREE.Group();
       frameGroup.position.set(fx, fy, fz);
@@ -973,7 +1189,7 @@ export const StudioRoom3D: React.FC<StudioRoom3DProps> = ({
       frameGroup.userData.wallFrameType = 'portrait';
 
       const darkFrameMat = new THREE.MeshStandardMaterial({ color: 0x3a322e, roughness: 0.46 });
-      const outer = new THREE.Mesh(new THREE.BoxGeometry(0.98, 1.28, 0.06), darkFrameMat);
+      const outer = new THREE.Mesh(new THREE.BoxGeometry(0.72, 0.9, 0.06), darkFrameMat);
       outer.castShadow = true;
       outer.userData.wallFrameType = 'portrait';
       frameGroup.add(outer);
@@ -985,7 +1201,7 @@ export const StudioRoom3D: React.FC<StudioRoom3DProps> = ({
         requestRender
       );
       const artMesh = new THREE.Mesh(
-        new THREE.PlaneGeometry(0.84, 1.14),
+        new THREE.PlaneGeometry(0.62, 0.78),
         new THREE.MeshStandardMaterial({ map: artTex, roughness: 0.65 })
       );
       artMesh.position.z = 0.034;

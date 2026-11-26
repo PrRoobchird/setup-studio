@@ -12,6 +12,7 @@ export const CLASSMATE_STUDIOS: ClassmateStudio[] = [
     baseFame: 265,
     wallThemeId: 'warm_ivory',
     floorThemeId: 'japanese_oak',
+    doorThemeId: 'door_oak_slat',
     placedItems: [
       { instanceId: 'p1', itemId: 'drafting_table', x: 0, y: 1, rotationStep: 1 },
       { instanceId: 'p2', itemId: 'bookshelf', x: 2, y: 0, rotationStep: 0 },
@@ -49,6 +50,7 @@ export const CLASSMATE_STUDIOS: ClassmateStudio[] = [
     baseFame: 210,
     wallThemeId: 'cobalt_atelier',
     floorThemeId: 'concrete_atelier',
+    doorThemeId: 'door_loft_steel',
     placedItems: [
       { instanceId: 'm1', itemId: 'digital_desk', x: 1, y: 0, rotationStep: 0 },
       { instanceId: 'm2', itemId: 'copic_rack', x: 3, y: 0, rotationStep: 0 },
@@ -84,6 +86,7 @@ export const CLASSMATE_STUDIOS: ClassmateStudio[] = [
     baseFame: 185,
     wallThemeId: 'sage_studio',
     floorThemeId: 'japanese_oak',
+    doorThemeId: 'door_sage_glass',
     placedItems: [
       { instanceId: 'k1', itemId: 'cozy_sofa', x: 1, y: 1, rotationStep: 0 },
       { instanceId: 'k2', itemId: 'woven_rug', x: 2, y: 2, rotationStep: 0 },
@@ -120,6 +123,7 @@ export const CLASSMATE_STUDIOS: ClassmateStudio[] = [
     baseFame: 195,
     wallThemeId: 'terracotta_warm',
     floorThemeId: 'walnut_loft',
+    doorThemeId: 'door_arch_walnut',
     placedItems: [
       { instanceId: 't1', itemId: 'mannequin', x: 1, y: 0, rotationStep: 0 },
       { instanceId: 't2', itemId: 'drafting_table', x: 2, y: 1, rotationStep: 1 },
@@ -155,6 +159,7 @@ export const CLASSMATE_STUDIOS: ClassmateStudio[] = [
     baseFame: 240,
     wallThemeId: 'warm_ivory',
     floorThemeId: 'walnut_loft',
+    doorThemeId: 'door_ivory_molding',
     placedItems: [
       { instanceId: 'r1', itemId: 'easel', x: 1, y: 1, rotationStep: 0 },
       { instanceId: 'r2', itemId: 'geometry_pedestal', x: 2, y: 0, rotationStep: 0 },

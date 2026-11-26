@@ -45,6 +45,31 @@ export interface FloorTheme {
   swatchColor: string;
 }
 
+export type DoorStyleId =
+  | 'classic_panel'
+  | 'ivory_molding'
+  | 'nordic_slat'
+  | 'sage_glass'
+  | 'arch_mediterranean'
+  | 'industrial_loft'
+  | 'xmas_wreath';
+
+export interface DoorTheme {
+  id: string;
+  name: string;
+  price: number;
+  fameBonus: number;
+  description: string;
+  style: DoorStyleId;
+  frameColor: string;
+  leafColor: string;
+  accentColor: string;
+  knobColor: string;
+  swatchColor: string;
+  isSeasonal?: boolean;
+  eventTag?: string;
+}
+
 export interface WindowViewTheme {
   id: string;
   name: string;
@@ -227,6 +252,7 @@ export interface ClassmateStudio {
   baseFame: number;
   wallThemeId: string;
   floorThemeId: string;
+  doorThemeId?: string;
   placedItems: PlacedItem[];
   avatar: AvatarConfig;
   latestArtwork: {
@@ -246,9 +272,11 @@ export interface StudioGameState {
   ownedItems: Record<string, number>;
   ownedWalls: string[];
   ownedFloors: string[];
+  ownedDoors: string[];
   ownedWindowViews: string[];
   activeWallId: string;
   activeFloorId: string;
+  activeDoorId: string;
   activeWindowViewId: string;
   placedItems: PlacedItem[];
   ownedWallFrames: WallFrameType[];

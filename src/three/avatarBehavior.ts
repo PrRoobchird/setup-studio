@@ -72,6 +72,76 @@ function getRotatedFrontDirs(item: PlacedItem): [number, number][] {
   ];
 }
 
+function getRotationStepFrontDirs(rotStepInput = 0): [number, number][] {
+  const rotStep = ((rotStepInput % 4) + 4) % 4;
+  const yaw = (rotStep * Math.PI) / 2;
+  const fdx = Math.round(Math.sin(yaw));
+  const fdz = Math.round(Math.cos(yaw));
+  const rightDx = Math.round(Math.cos(yaw));
+  const rightDz = -Math.round(Math.sin(yaw));
+
+  return [
+    [fdx, fdz],
+    [rightDx, rightDz],
+    [-rightDx, -rightDz],
+    [-fdx, -fdz],
+  ];
+}
+
+function computeSnugItemPlacement(
+  centerX: number,
+  centerZ: number,
+  rotStepInput: number,
+  standTile: { x: number; y: number },
+  halfExtX: number,
+  halfExtZ: number,
+  avatarClearance: number,
+  gridSize: number,
+  cellSize: number,
+  radialRadius?: number
+): { actionWorld: { x: number; z: number }; faceWorld: { x: number; z: number } } {
+  const [sx, sz] = cellToWorld(standTile.x, standTile.y, gridSize, cellSize);
+  const dx = sx - centerX;
+  const dz = sz - centerZ;
+
+  if (radialRadius !== undefined) {
+    const len = Math.max(0.01, Math.hypot(dx, dz));
+    const dist = Math.min(cellSize * 0.48, radialRadius + avatarClearance);
+    return {
+      actionWorld: {
+        x: centerX + (dx / len) * dist,
+        z: centerZ + (dz / len) * dist,
+      },
+      faceWorld: { x: centerX, z: centerZ },
+    };
+  }
+
+  const rotStep = ((rotStepInput % 4) + 4) % 4;
+  const yaw = (rotStep * Math.PI) / 2;
+  const cos = Math.cos(yaw);
+  const sin = Math.sin(yaw);
+
+  // Transform approach vector into local item space
+  const dlx = dx * cos - dz * sin;
+  const dlz = dx * sin + dz * cos;
+
+  let lx = 0;
+  let lz = 0;
+  if (Math.abs(dlz) >= Math.abs(dlx)) {
+    lz = (dlz >= 0 ? 1 : -1) * Math.min(cellSize * 0.48, halfExtZ + avatarClearance);
+  } else {
+    lx = (dlx >= 0 ? 1 : -1) * Math.min(cellSize * 0.49, halfExtX + avatarClearance);
+  }
+
+  return {
+    actionWorld: {
+      x: centerX + lx * cos + lz * sin,
+      z: centerZ - lx * sin + lz * cos,
+    },
+    faceWorld: { x: centerX, z: centerZ },
+  };
+}
+
 function shortestAngleDiff(from: number, to: number): number {
   let diff = (to - from) % (Math.PI * 2);
   if (diff > Math.PI) diff -= Math.PI * 2;
@@ -283,7 +353,7 @@ export function buildStudioActivityTargets(
           type: 'draw_at_desk',
           label: 'กำลังนั่งสเก็ตช์รูปบนพื้น',
           standTile: frontSpot,
-          actionWorld: { x: ix + (vx / len) * 0.56, z: iz + (vz / len) * 0.56 },
+          actionWorld: { x: ix + (vx / len) * 0.45, z: iz + (vz / len) * 0.45 },
           faceWorld: { x: ix, z: iz },
           duration: 6.0,
           seatPose: 'floor',
@@ -292,6 +362,13 @@ export function buildStudioActivityTargets(
       }
     } else if (item.itemId === 'monstera' || item.itemId === 'wall_shelf_paints' || item.itemId === 'xmas_tree') {
       if (frontSpot) {
+        const rotStep = item.rotationStep ?? (item.flipped ? 1 : 0);
+        const snug =
+          item.itemId === 'monstera'
+            ? computeSnugItemPlacement(ix, iz, rotStep, frontSpot, 0.19, 0.19, 0.14, gridSize, cellSize, 0.2)
+            : item.itemId === 'xmas_tree'
+              ? computeSnugItemPlacement(ix, iz, rotStep, frontSpot, 0.36, 0.36, 0.11, gridSize, cellSize, 0.35)
+              : computeSnugItemPlacement(ix, iz, rotStep, frontSpot, 0.34, 0.17, 0.15, gridSize, cellSize);
         targets.push({
           id: `water-${item.instanceId}`,
           instanceId: item.instanceId,
@@ -301,9 +378,13 @@ export function buildStudioActivityTargets(
               ? 'กำลังรดน้ำและดูแลต้นคริสต์มาส'
               : item.itemId === 'wall_shelf_paints'
                 ? 'กำลังรดน้ำต้นกระบองเพชรและจัดขวดสี'
-                : 'กำลังถือบัวรดน้ำต้นมอนสเตอร่า',
+                : 'กำลังยืนชิดกระถางรดน้ำต้นมอนสเตอร่า',
           standTile: frontSpot,
-          faceWorld: { x: ix, z: iz },
+          actionWorld: snug.actionWorld,
+          faceWorld:
+            item.itemId === 'wall_shelf_paints'
+              ? itemLocalToWorld(item, 0.14, 0, gridSize, cellSize)
+              : snug.faceWorld,
           duration: 5.4,
         });
       }
@@ -313,31 +394,42 @@ export function buildStudioActivityTargets(
       item.itemId === 'ny_countdown_lamp'
     ) {
       if (frontSpot) {
+        const rotStep = item.rotationStep ?? (item.flipped ? 1 : 0);
+        const snug =
+          item.itemId === 'coffee_table'
+            ? computeSnugItemPlacement(ix, iz, rotStep, frontSpot, 0.3, 0.265, 0.135, gridSize, cellSize)
+            : item.itemId === 'akari_lamp'
+              ? computeSnugItemPlacement(ix, iz, rotStep, frontSpot, 0.24, 0.24, 0.14, gridSize, cellSize, 0.24)
+              : computeSnugItemPlacement(ix, iz, rotStep, frontSpot, 0.26, 0.26, 0.13, gridSize, cellSize, 0.26);
         const lampLabel =
           item.itemId === 'akari_lamp'
             ? 'กำลังเดินไปเปิด-ปิดโคมไฟ Akari'
             : item.itemId === 'ny_countdown_lamp'
               ? 'กำลังเปิด-ปิดแท่นไฟดาวปีใหม่'
-              : 'กำลังเปิด-ปิดโคมไฟหัวเตียง';
+              : 'กำลังเปิด-ปิดโคมไฟที่ตู้ลิ้นชัก';
         targets.push({
           id: `lamp-${item.instanceId}`,
           instanceId: item.instanceId,
           type: 'toggle_lamp',
           label: lampLabel,
           standTile: frontSpot,
-          faceWorld: { x: ix, z: iz },
+          actionWorld: snug.actionWorld,
+          faceWorld: snug.faceWorld,
           duration: 3.4,
         });
       }
     } else if (item.itemId === 'easel') {
       if (frontSpot) {
+        const rotStep = item.rotationStep ?? (item.flipped ? 1 : 0);
+        const snug = computeSnugItemPlacement(ix, iz, rotStep, frontSpot, 0.28, 0.22, 0.14, gridSize, cellSize);
         targets.push({
           id: `paint-${item.instanceId}`,
           instanceId: item.instanceId,
           type: 'paint_at_easel',
-          label: 'กำลังวาดภาพลงสีที่ขาตั้งผ้าใบ',
+          label: 'กำลังยืนชิดขาตั้งวาดภาพลงสี',
           standTile: frontSpot,
-          faceWorld: { x: ix, z: iz },
+          actionWorld: snug.actionWorld,
+          faceWorld: snug.faceWorld,
           duration: 6.2,
           usesSketchTool: true,
         });
@@ -351,9 +443,22 @@ export function buildStudioActivityTargets(
       item.itemId === 'blueprint_basket'
     ) {
       if (frontSpot) {
+        const rotStep = item.rotationStep ?? (item.flipped ? 1 : 0);
+        const snug =
+          item.itemId === 'model_workbench'
+            ? computeSnugItemPlacement(ix, iz, rotStep, frontSpot, 0.42, 0.32, 0.14, gridSize, cellSize)
+            : item.itemId === 'copic_rack'
+              ? computeSnugItemPlacement(ix, iz, rotStep, frontSpot, 0.42, 0.24, 0.14, gridSize, cellSize)
+              : item.itemId === 'printer_3d'
+                ? computeSnugItemPlacement(ix, iz, rotStep, frontSpot, 0.34, 0.29, 0.14, gridSize, cellSize)
+                : item.itemId === 'geometry_pedestal'
+                  ? computeSnugItemPlacement(ix, iz, rotStep, frontSpot, 0.26, 0.26, 0.14, gridSize, cellSize)
+                  : item.itemId === 'mannequin'
+                    ? computeSnugItemPlacement(ix, iz, rotStep, frontSpot, 0.22, 0.22, 0.14, gridSize, cellSize, 0.22)
+                    : computeSnugItemPlacement(ix, iz, rotStep, frontSpot, 0.24, 0.24, 0.14, gridSize, cellSize, 0.24);
         const workLabels: Record<string, string> = {
-          model_workbench: 'กำลังปั้นหุ่นและตัดโมเดลสถาปัตย์',
-          copic_rack: 'กำลังเลือกสีโคปิกและผสมสี',
+          model_workbench: 'กำลังปั้นหุ่นและตัดโมเดลที่โต๊ะเวิร์กเบนช์',
+          copic_rack: 'กำลังเลือกสีโคปิกและผสมสีที่เคาน์เตอร์',
           mannequin: 'กำลังจัดท่าหุ่นไม้ฝึกอนาโตมี',
           geometry_pedestal: 'กำลังสเก็ตช์หุ่นนิ่งเรขาคณิต',
           printer_3d: 'กำลังตรวจดูโมเดลจากเครื่องพิมพ์ 3D',
@@ -365,7 +470,8 @@ export function buildStudioActivityTargets(
           type: 'work_craft',
           label: workLabels[item.itemId] ?? 'กำลังทำงานศิลปะในสตูดิโอ',
           standTile: frontSpot,
-          faceWorld: { x: ix, z: iz },
+          actionWorld: snug.actionWorld,
+          faceWorld: snug.faceWorld,
           duration: 5.5,
           usesSketchTool: item.itemId === 'geometry_pedestal' || item.itemId === 'copic_rack',
         });
@@ -377,6 +483,15 @@ export function buildStudioActivityTargets(
       item.itemId === 'pet_grooming_cart'
     ) {
       if (frontSpot) {
+        const rotStep = item.rotationStep ?? (item.flipped ? 1 : 0);
+        const snug =
+          item.itemId === 'studio_cat'
+            ? computeSnugItemPlacement(ix, iz, rotStep, frontSpot, 0.3, 0.3, 0.12, gridSize, cellSize, 0.3)
+            : item.itemId === 'pet_bowl_set'
+              ? computeSnugItemPlacement(ix, iz, rotStep, frontSpot, 0.31, 0.16, 0.14, gridSize, cellSize)
+              : item.itemId === 'pet_play_tunnel'
+                ? computeSnugItemPlacement(ix, iz, rotStep, frontSpot, 0.32, 0.26, 0.14, gridSize, cellSize)
+                : computeSnugItemPlacement(ix, iz, rotStep, frontSpot, 0.27, 0.18, 0.15, gridSize, cellSize);
         const petDecorLabels: Record<string, string> = {
           studio_cat: 'กำลังเล่นและลูบหัวน้องแมวส้ม',
           pet_bowl_set: 'กำลังเติมอาหารและน้ำให้น้องสัตว์เลี้ยง',
@@ -389,14 +504,28 @@ export function buildStudioActivityTargets(
           type: 'play_with_pet',
           label: petDecorLabels[item.itemId] ?? 'กำลังดูแลมุมสัตว์เลี้ยง',
           standTile: frontSpot,
-          faceWorld: { x: ix, z: iz },
+          actionWorld: snug.actionWorld,
+          faceWorld: snug.faceWorld,
           duration: 5.2,
         });
       }
     } else if (frontSpot) {
       // Catch-all for bookshelf, studio_certificate, bauhaus_poster, xmas_wreath_stand, xmas_snowman_plush, or any future item
+      const rotStep = item.rotationStep ?? (item.flipped ? 1 : 0);
+      const snug =
+        item.itemId === 'bookshelf'
+          ? computeSnugItemPlacement(ix, iz, rotStep, frontSpot, 0.42, 0.18, 0.15, gridSize, cellSize)
+          : item.itemId === 'studio_certificate'
+            ? computeSnugItemPlacement(ix, iz, rotStep, frontSpot, 0.26, 0.22, 0.14, gridSize, cellSize)
+            : item.itemId === 'bauhaus_poster'
+              ? computeSnugItemPlacement(ix, iz, rotStep, frontSpot, 0.27, 0.22, 0.14, gridSize, cellSize)
+              : item.itemId === 'xmas_wreath_stand'
+                ? computeSnugItemPlacement(ix, iz, rotStep, frontSpot, 0.32, 0.26, 0.14, gridSize, cellSize)
+                : item.itemId === 'xmas_snowman_plush'
+                  ? computeSnugItemPlacement(ix, iz, rotStep, frontSpot, 0.22, 0.22, 0.13, gridSize, cellSize, 0.22)
+                  : computeSnugItemPlacement(ix, iz, rotStep, frontSpot, 0.26, 0.26, 0.15, gridSize, cellSize);
       const inspectLabels: Record<string, string> = {
-        bookshelf: 'กำลังเลือกดูหนังสืออาร์ตบุ๊ก',
+        bookshelf: 'กำลังยืนเลือกดูหนังสืออาร์ตบุ๊กชิดตู้',
         studio_certificate: 'กำลังชื่นชมใบประกาศ Born to be Art',
         bauhaus_poster: 'กำลังดูแรงบันดาลใจจากโปสเตอร์',
         xmas_wreath_stand: 'กำลังจัดกล่องของขวัญและพวงมาลัย',
@@ -408,36 +537,90 @@ export function buildStudioActivityTargets(
         type: 'browse_books',
         label: inspectLabels[item.itemId] ?? 'กำลังตรวจดูของตกแต่งสตูดิโอ',
         standTile: frontSpot,
-        faceWorld: { x: ix, z: iz },
+        actionWorld: snug.actionWorld,
+        faceWorld: snug.faceWorld,
         duration: 4.8,
       });
     }
   }
 
-  // Pet interaction spot for every adopted pet
+  // Pet interaction spot for every adopted pet (steps closely into habitat edge / open pen doorway)
   for (const pet of pets) {
     const tiles = getPetFootprintTiles(pet);
-    const first = tiles[0] ?? { x: pet.x, y: pet.y };
-    const [px, pz] = cellToWorld(first.x, first.y, gridSize, cellSize);
+    const rot = (pet.rotationStep ?? 0) % 4;
+    const preferredDirs = getRotationStepFrontDirs(rot);
+
+    // Find best adjacent tile prioritizing the habitat's front (+Z) side across all occupied tiles
     let spot: { x: number; y: number } | null = null;
-    for (const t of tiles) {
-      spot = findAdjacentWalkableTile(t.x, t.y, walkable, gridSize);
+    for (const dir of preferredDirs) {
+      for (const t of tiles) {
+        const nx = t.x + dir[0];
+        const ny = t.y + dir[1];
+        if (nx >= 0 && ny >= 0 && nx < gridSize && ny < gridSize && walkable[ny][nx]) {
+          spot = { x: nx, y: ny };
+          break;
+        }
+      }
       if (spot) break;
     }
+
     if (spot) {
+      const baseW = pet.species === 'dog' ? 2 : 1;
+      const baseH = 1;
+      const effW = rot % 2 === 1 ? baseH : baseW;
+      const effH = rot % 2 === 1 ? baseW : baseH;
+      const [px, pz] = cellToWorld(
+        pet.x + (effW - 1) / 2,
+        pet.y + (effH - 1) / 2,
+        gridSize,
+        cellSize
+      );
+
+      let actionWorld: { x: number; z: number };
+      if (pet.species === 'dog') {
+        const yaw = (rot * Math.PI) / 2;
+        const cos = Math.cos(yaw);
+        const sin = Math.sin(yaw);
+        const [sx, sz] = cellToWorld(spot.x, spot.y, gridSize, cellSize);
+        const dx = sx - px;
+        const dz = sz - pz;
+        const dlx = dx * cos - dz * sin;
+        const dlz = dx * sin + dz * cos;
+        let lx = 0;
+        let lz = 0;
+        if (Math.abs(dlz) >= Math.abs(dlx) * 0.85) {
+          // Open doorway on front (+Z) lets avatar stand right at the pen entrance
+          lz = dlz >= 0 ? cellSize * 0.49 : -(cellSize * 0.44 + 0.14);
+        } else {
+          lx = (dlx >= 0 ? 1 : -1) * (cellSize * 0.92 + 0.14);
+        }
+        actionWorld = {
+          x: px + lx * cos + lz * sin,
+          z: pz - lx * sin + lz * cos,
+        };
+      } else if (pet.species === 'cat') {
+        actionWorld = computeSnugItemPlacement(px, pz, rot, spot, 0.34, 0.34, 0.12, gridSize, cellSize, 0.34).actionWorld;
+      } else if (pet.species === 'hedgehog') {
+        actionWorld = computeSnugItemPlacement(px, pz, rot, spot, 0.41, 0.34, 0.13, gridSize, cellSize).actionWorld;
+      } else {
+        // goldfish & snake glass tanks
+        actionWorld = computeSnugItemPlacement(px, pz, rot, spot, 0.39, 0.31, 0.14, gridSize, cellSize).actionWorld;
+      }
+
       targets.push({
         id: `pet-${pet.instanceId}`,
         instanceId: pet.instanceId,
         type: 'play_with_pet',
         label: `กำลังเล่นกับน้อง ${pet.nickname}`,
         standTile: spot,
+        actionWorld,
         faceWorld: { x: px, z: pz },
         duration: 5.4,
       });
     }
   }
 
-  // Look out the back-right studio window
+  // Look out the back-right studio window (stand close to window sill)
   const winTileX = gridSize === 7 ? 4 : 2;
   const winCandidates: [number, number][] = [
     [winTileX, 0],
@@ -448,11 +631,13 @@ export function buildStudioActivityTargets(
   for (const [wx, wy] of winCandidates) {
     if (walkable[wy]?.[wx]) {
       const [worldX, worldZ] = cellToWorld(wx, wy, gridSize, cellSize);
+      const halfSpan = (gridSize * cellSize) / 2;
       targets.push({
         id: 'window-view',
         type: 'look_window',
         label: 'กำลังเดินชมวิวนอกหน้าต่าง',
         standTile: { x: wx, y: wy },
+        actionWorld: wy === 0 ? { x: worldX, z: -halfSpan + 0.34 } : { x: worldX, z: worldZ },
         faceWorld: { x: worldX, z: worldZ - 2.0 },
         duration: 5.0,
       });
@@ -460,17 +645,19 @@ export function buildStudioActivityTargets(
     }
   }
 
-  // Admire wall frames or left wall poster
+  // Admire wall frames or left wall poster (stand closer to the framed wall)
   if (ownedWallFrames.includes('landscape')) {
     const lx = 0;
     for (let ly = 0; ly < 2; ly++) {
       if (walkable[ly]?.[lx]) {
         const [worldX, worldZ] = cellToWorld(lx, ly, gridSize, cellSize);
+        const halfSpan = (gridSize * cellSize) / 2;
         targets.push({
           id: 'frame-landscape',
           type: 'admire_frame',
           label: 'กำลังชื่นชมผลงานบนผนัง',
           standTile: { x: lx, y: ly },
+          actionWorld: ly === 0 ? { x: worldX, z: -halfSpan + 0.38 } : { x: worldX, z: worldZ },
           faceWorld: { x: worldX, z: worldZ - 2.0 },
           duration: 4.5,
         });
@@ -482,11 +669,13 @@ export function buildStudioActivityTargets(
     const py = gridSize === 7 ? 2 : 1;
     if (walkable[py]?.[px]) {
       const [worldX, worldZ] = cellToWorld(px, py, gridSize, cellSize);
+      const halfSpan = (gridSize * cellSize) / 2;
       targets.push({
         id: 'frame-portrait',
         type: 'admire_frame',
         label: 'กำลังชื่นชมผลงานบนผนัง',
         standTile: { x: px, y: py },
+        actionWorld: { x: -halfSpan + 0.38, z: worldZ },
         faceWorld: { x: worldX - 2.0, z: worldZ },
         duration: 4.5,
       });
@@ -767,17 +956,29 @@ export class AvatarBehaviorController {
         this.rig.root.rotation.y += diff * Math.min(1, dt * 12);
       }
 
-      const { dropY, legAngle } = this.getSeatMetrics(target.seatPose);
-      this.rig.leftLeg.rotation.x = THREE.MathUtils.damp(this.rig.leftLeg.rotation.x, legAngle, 14, dt);
-      this.rig.rightLeg.rotation.x = THREE.MathUtils.damp(this.rig.rightLeg.rotation.x, legAngle, 14, dt);
-      const cosLift = Math.max(0, 1 - Math.cos(this.rig.leftLeg.rotation.x));
-      const safeDropY = dropY < 0 ? Math.max(dropY, -0.28 * Math.pow(cosLift, 1.45)) : dropY;
-      this.rig.bodyGroup.position.y = THREE.MathUtils.damp(this.rig.bodyGroup.position.y, safeDropY, 16, dt);
-      this.rig.leftArm.rotation.x = THREE.MathUtils.damp(this.rig.leftArm.rotation.x, -0.25, 10, dt);
-      this.rig.leftForearm.rotation.x = THREE.MathUtils.damp(this.rig.leftForearm.rotation.x, -0.18, 10, dt);
-      this.rig.rightArm.rotation.x = THREE.MathUtils.damp(this.rig.rightArm.rotation.x, this.hasUserHandItem ? -0.2 : -0.35, 10, dt);
-      this.rig.rightForearm.rotation.x = THREE.MathUtils.damp(this.rig.rightForearm.rotation.x, this.hasUserHandItem ? -1.08 : -0.22, 10, dt);
-      this.rig.rightForearm.rotation.z = THREE.MathUtils.damp(this.rig.rightForearm.rotation.z, this.hasUserHandItem ? -0.2 : 0, 10, dt);
+      if (target.seatPose) {
+        const { dropY, legAngle } = this.getSeatMetrics(target.seatPose);
+        this.rig.leftLeg.rotation.x = THREE.MathUtils.damp(this.rig.leftLeg.rotation.x, legAngle, 14, dt);
+        this.rig.rightLeg.rotation.x = THREE.MathUtils.damp(this.rig.rightLeg.rotation.x, legAngle, 14, dt);
+        const cosLift = Math.max(0, 1 - Math.cos(this.rig.leftLeg.rotation.x));
+        const safeDropY = dropY < 0 ? Math.max(dropY, -0.28 * Math.pow(cosLift, 1.45)) : dropY;
+        this.rig.bodyGroup.position.y = THREE.MathUtils.damp(this.rig.bodyGroup.position.y, safeDropY, 16, dt);
+        this.rig.leftArm.rotation.x = THREE.MathUtils.damp(this.rig.leftArm.rotation.x, -0.25, 10, dt);
+        this.rig.leftForearm.rotation.x = THREE.MathUtils.damp(this.rig.leftForearm.rotation.x, -0.18, 10, dt);
+        this.rig.rightArm.rotation.x = THREE.MathUtils.damp(this.rig.rightArm.rotation.x, this.hasUserHandItem ? -0.2 : -0.35, 10, dt);
+        this.rig.rightForearm.rotation.x = THREE.MathUtils.damp(this.rig.rightForearm.rotation.x, this.hasUserHandItem ? -1.08 : -0.22, 10, dt);
+        this.rig.rightForearm.rotation.z = THREE.MathUtils.damp(this.rig.rightForearm.rotation.z, this.hasUserHandItem ? -0.2 : 0, 10, dt);
+      } else {
+        const stride = Math.sin(p * Math.PI * 2) * 0.36;
+        this.rig.leftLeg.rotation.x = stride;
+        this.rig.rightLeg.rotation.x = -stride;
+        this.rig.bodyGroup.position.y = Math.abs(Math.sin(p * Math.PI * 2)) * 0.022;
+        this.rig.leftArm.rotation.x = -stride * 0.5;
+        this.rig.leftForearm.rotation.x = THREE.MathUtils.damp(this.rig.leftForearm.rotation.x, -0.1, 10, dt);
+        this.rig.rightArm.rotation.x = this.hasUserHandItem ? -0.18 : stride * 0.5;
+        this.rig.rightForearm.rotation.x = THREE.MathUtils.damp(this.rig.rightForearm.rotation.x, this.hasUserHandItem ? -1.12 : -0.1, 10, dt);
+        this.rig.rightForearm.rotation.z = THREE.MathUtils.damp(this.rig.rightForearm.rotation.z, this.hasUserHandItem ? -0.22 : 0, 10, dt);
+      }
 
       if (p >= 1) {
         this.rig.root.position.x = target.actionWorld.x;
@@ -798,19 +999,33 @@ export class AvatarBehaviorController {
       this.rig.root.position.x = THREE.MathUtils.lerp(target.actionWorld.x, sx, ease);
       this.rig.root.position.z = THREE.MathUtils.lerp(target.actionWorld.z, sz, ease);
 
-      const { dropY } = this.getSeatMetrics(target.seatPose);
-      this.rig.leftLeg.rotation.x = THREE.MathUtils.damp(this.rig.leftLeg.rotation.x, 0, 10, dt);
-      this.rig.rightLeg.rotation.x = THREE.MathUtils.damp(this.rig.rightLeg.rotation.x, 0, 10, dt);
-      const cosLift = Math.max(0, 1 - Math.cos(this.rig.leftLeg.rotation.x));
-      const safeExitY = dropY < 0 ? Math.max(dropY, -0.28 * Math.pow(cosLift, 1.45)) : 0;
-      this.rig.bodyGroup.position.y = THREE.MathUtils.damp(this.rig.bodyGroup.position.y, safeExitY, 22, dt);
-      this.rig.bodyGroup.rotation.x = THREE.MathUtils.damp(this.rig.bodyGroup.rotation.x, 0, 12, dt);
-      this.rig.leftArm.rotation.x = THREE.MathUtils.damp(this.rig.leftArm.rotation.x, 0, 12, dt);
-      this.rig.leftForearm.rotation.x = THREE.MathUtils.damp(this.rig.leftForearm.rotation.x, -0.08, 12, dt);
-      this.rig.rightArm.rotation.x = THREE.MathUtils.damp(this.rig.rightArm.rotation.x, this.hasUserHandItem ? -0.18 : 0, 12, dt);
-      this.rig.rightArm.rotation.z = THREE.MathUtils.damp(this.rig.rightArm.rotation.z, this.hasUserHandItem ? 0.06 : 0, 12, dt);
-      this.rig.rightForearm.rotation.x = THREE.MathUtils.damp(this.rig.rightForearm.rotation.x, this.hasUserHandItem ? -1.12 : -0.08, 12, dt);
-      this.rig.rightForearm.rotation.z = THREE.MathUtils.damp(this.rig.rightForearm.rotation.z, this.hasUserHandItem ? -0.22 : 0, 12, dt);
+      if (target.seatPose) {
+        const { dropY } = this.getSeatMetrics(target.seatPose);
+        this.rig.leftLeg.rotation.x = THREE.MathUtils.damp(this.rig.leftLeg.rotation.x, 0, 10, dt);
+        this.rig.rightLeg.rotation.x = THREE.MathUtils.damp(this.rig.rightLeg.rotation.x, 0, 10, dt);
+        const cosLift = Math.max(0, 1 - Math.cos(this.rig.leftLeg.rotation.x));
+        const safeExitY = dropY < 0 ? Math.max(dropY, -0.28 * Math.pow(cosLift, 1.45)) : 0;
+        this.rig.bodyGroup.position.y = THREE.MathUtils.damp(this.rig.bodyGroup.position.y, safeExitY, 22, dt);
+        this.rig.bodyGroup.rotation.x = THREE.MathUtils.damp(this.rig.bodyGroup.rotation.x, 0, 12, dt);
+        this.rig.leftArm.rotation.x = THREE.MathUtils.damp(this.rig.leftArm.rotation.x, 0, 12, dt);
+        this.rig.leftForearm.rotation.x = THREE.MathUtils.damp(this.rig.leftForearm.rotation.x, -0.08, 12, dt);
+        this.rig.rightArm.rotation.x = THREE.MathUtils.damp(this.rig.rightArm.rotation.x, this.hasUserHandItem ? -0.18 : 0, 12, dt);
+        this.rig.rightArm.rotation.z = THREE.MathUtils.damp(this.rig.rightArm.rotation.z, this.hasUserHandItem ? 0.06 : 0, 12, dt);
+        this.rig.rightForearm.rotation.x = THREE.MathUtils.damp(this.rig.rightForearm.rotation.x, this.hasUserHandItem ? -1.12 : -0.08, 12, dt);
+        this.rig.rightForearm.rotation.z = THREE.MathUtils.damp(this.rig.rightForearm.rotation.z, this.hasUserHandItem ? -0.22 : 0, 12, dt);
+      } else {
+        const stride = Math.sin(p * Math.PI * 2) * 0.34;
+        this.rig.leftLeg.rotation.x = stride;
+        this.rig.rightLeg.rotation.x = -stride;
+        this.rig.bodyGroup.position.y = Math.abs(Math.sin(p * Math.PI * 2)) * 0.02;
+        this.rig.bodyGroup.rotation.x = THREE.MathUtils.damp(this.rig.bodyGroup.rotation.x, 0, 12, dt);
+        this.rig.leftArm.rotation.x = -stride * 0.5;
+        this.rig.leftForearm.rotation.x = THREE.MathUtils.damp(this.rig.leftForearm.rotation.x, -0.08, 12, dt);
+        this.rig.rightArm.rotation.x = this.hasUserHandItem ? -0.18 : stride * 0.5;
+        this.rig.rightArm.rotation.z = THREE.MathUtils.damp(this.rig.rightArm.rotation.z, this.hasUserHandItem ? 0.06 : 0, 12, dt);
+        this.rig.rightForearm.rotation.x = THREE.MathUtils.damp(this.rig.rightForearm.rotation.x, this.hasUserHandItem ? -1.12 : -0.08, 12, dt);
+        this.rig.rightForearm.rotation.z = THREE.MathUtils.damp(this.rig.rightForearm.rotation.z, this.hasUserHandItem ? -0.22 : 0, 12, dt);
+      }
 
       if (p >= 1) {
         this.rig.root.position.x = sx;
@@ -896,37 +1111,37 @@ export class AvatarBehaviorController {
       this.rig.headGroup.rotation.x = 0.06 + Math.sin(t * 2.1) * 0.05;
     } else if (target.type === 'water_plant') {
       this.rig.bodyGroup.position.y = THREE.MathUtils.damp(this.rig.bodyGroup.position.y, 0, 10, dt);
-      this.rig.bodyGroup.rotation.x = THREE.MathUtils.damp(this.rig.bodyGroup.rotation.x, 0.16, 8, dt);
+      this.rig.bodyGroup.rotation.x = THREE.MathUtils.damp(this.rig.bodyGroup.rotation.x, 0.14, 8, dt);
       this.rig.leftLeg.rotation.x = THREE.MathUtils.damp(this.rig.leftLeg.rotation.x, 0, 10, dt);
       this.rig.rightLeg.rotation.x = THREE.MathUtils.damp(this.rig.rightLeg.rotation.x, 0, 10, dt);
-      this.rig.leftArm.rotation.x = THREE.MathUtils.damp(this.rig.leftArm.rotation.x, 0.16, 8, dt);
+      this.rig.leftArm.rotation.x = THREE.MathUtils.damp(this.rig.leftArm.rotation.x, 0.14, 8, dt);
       this.rig.leftForearm.rotation.x = THREE.MathUtils.damp(this.rig.leftForearm.rotation.x, -0.1, 8, dt);
-      this.rig.rightArm.rotation.x = -0.64 + Math.sin(t * 3.4) * 0.1;
+      this.rig.rightArm.rotation.x = -0.58 + Math.sin(t * 3.4) * 0.08;
       this.rig.rightArm.rotation.z = -0.06;
-      this.rig.rightForearm.rotation.x = THREE.MathUtils.damp(this.rig.rightForearm.rotation.x, -0.45, 10, dt);
+      this.rig.rightForearm.rotation.x = THREE.MathUtils.damp(this.rig.rightForearm.rotation.x, -0.5, 10, dt);
       this.rig.rightForearm.rotation.z = THREE.MathUtils.damp(this.rig.rightForearm.rotation.z, 0, 10, dt);
       this.rig.wateringCanGroup.rotation.x = 0.34 + Math.sin(t * 4.4) * 0.16;
-      this.rig.headGroup.rotation.x = 0.14;
+      this.rig.headGroup.rotation.x = 0.16;
       this.rig.headGroup.rotation.y = Math.sin(t * 1.6) * 0.08;
     } else if (target.type === 'toggle_lamp') {
       this.rig.bodyGroup.position.y = THREE.MathUtils.damp(this.rig.bodyGroup.position.y, 0, 10, dt);
-      this.rig.bodyGroup.rotation.x = THREE.MathUtils.damp(this.rig.bodyGroup.rotation.x, 0.08, 8, dt);
+      this.rig.bodyGroup.rotation.x = THREE.MathUtils.damp(this.rig.bodyGroup.rotation.x, 0.06, 8, dt);
       this.rig.leftLeg.rotation.x = THREE.MathUtils.damp(this.rig.leftLeg.rotation.x, 0, 10, dt);
       this.rig.rightLeg.rotation.x = THREE.MathUtils.damp(this.rig.rightLeg.rotation.x, 0, 10, dt);
       this.rig.leftArm.rotation.x = THREE.MathUtils.damp(this.rig.leftArm.rotation.x, 0, 8, dt);
       this.rig.leftForearm.rotation.x = THREE.MathUtils.damp(this.rig.leftForearm.rotation.x, -0.08, 8, dt);
-      // Reach right hand forward to click the lamp switch around t = 1.2s
+      // Reach right hand forward close to the drawer/lamp switch around t = 1.2s
       const reachWave = Math.sin(Math.min(Math.PI, (this.actionElapsed / target.duration) * Math.PI));
-      this.rig.rightArm.rotation.x = -0.82 * reachWave;
+      this.rig.rightArm.rotation.x = -0.68 * reachWave;
       this.rig.rightArm.rotation.z = 0;
       this.rig.rightForearm.rotation.x = THREE.MathUtils.damp(
         this.rig.rightForearm.rotation.x,
-        this.hasUserHandItem ? -0.9 - 0.15 * reachWave : -0.35 * reachWave,
+        this.hasUserHandItem ? -0.92 - 0.14 * reachWave : -0.44 * reachWave,
         10,
         dt
       );
       this.rig.rightForearm.rotation.z = THREE.MathUtils.damp(this.rig.rightForearm.rotation.z, 0, 10, dt);
-      this.rig.headGroup.rotation.x = -0.08;
+      this.rig.headGroup.rotation.x = 0.04;
       this.rig.headGroup.rotation.y = Math.sin(t * 1.6) * 0.08;
 
       if (!this.lampToggledThisAction && this.actionElapsed >= 1.25 && target.instanceId) {

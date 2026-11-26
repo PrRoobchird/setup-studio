@@ -4,6 +4,7 @@ import {
   Armchair,
   CheckCircle2,
   Coins,
+  DoorOpen,
   Eye,
   Flower2,
   Frame,
@@ -26,6 +27,7 @@ import {
 import {
   AVATAR_ITEM_MAP,
   AVATAR_SHOP_ITEMS,
+  DOOR_THEMES,
   FLOOR_THEMES,
   MAX_FAME,
   MAX_PETS,
@@ -53,6 +55,7 @@ import {
   WallFrameType,
 } from '../types/studio';
 import { AvatarPreview3D } from './AvatarPreview3D';
+import { DoorThumbnail } from './DoorThumbnail';
 import { FashionIllustration } from './FashionIllustration';
 import { ItemThumbnail } from './ItemThumbnail';
 import { PetIllustration } from './PetIllustration';
@@ -65,6 +68,7 @@ export type ShopFilter =
   | 'decor'
   | 'frames'
   | 'surfaces'
+  | 'doors'
   | 'views'
   | 'avatar'
   | 'pets';
@@ -80,6 +84,8 @@ interface ShopTabProps {
   onSelectWall: (wallId: string) => void;
   onBuyFloor: (floorId: string) => void;
   onSelectFloor: (floorId: string) => void;
+  onBuyDoor: (doorId: string) => void;
+  onSelectDoor: (doorId: string) => void;
   onBuyWindowView: (viewId: string) => void;
   onSelectWindowView: (viewId: string) => void;
   onBuyAvatarItem: (itemId: string) => void;
@@ -125,6 +131,8 @@ export const ShopTab: React.FC<ShopTabProps> = ({
   onSelectWall,
   onBuyFloor,
   onSelectFloor,
+  onBuyDoor,
+  onSelectDoor,
   onBuyWindowView,
   onSelectWindowView,
   onBuyAvatarItem,
@@ -214,6 +222,9 @@ export const ShopTab: React.FC<ShopTabProps> = ({
 
   const buyableWalls = WALL_THEMES.filter((w) => w.price > 0);
   const buyableFloors = FLOOR_THEMES.filter((f) => f.price > 0);
+  const buyableDoors = DOOR_THEMES.filter(
+    (d) => !d.isSeasonal || holidayStatus.isActive || state.ownedDoors.includes(d.id)
+  );
   const buyableViews = WINDOW_VIEW_THEMES.filter(
     (v) => !v.isSeasonal || holidayStatus.isActive
   );
@@ -229,6 +240,7 @@ export const ShopTab: React.FC<ShopTabProps> = ({
       label: 'สีผนัง & พื้น',
       count: buyableWalls.length + buyableFloors.length,
     },
+    { id: 'doors', label: 'ประตูห้อง', count: buyableDoors.length },
     { id: 'views', label: 'วิวหน้าต่าง', count: buyableViews.length },
     { id: 'avatar', label: 'แฟชั่นอวตาร', count: allAvatarShopItems.length },
     {
@@ -243,6 +255,7 @@ export const ShopTab: React.FC<ShopTabProps> = ({
   const showDecor = filter === 'all' || filter === 'decor';
   const showFrames = filter === 'all' || filter === 'frames';
   const showSurfaces = filter === 'all' || filter === 'surfaces';
+  const showDoors = filter === 'all' || filter === 'doors';
   const showViews = filter === 'all' || filter === 'views';
   const showAvatar = filter === 'all' || filter === 'avatar';
   const showPets = filter === 'all' || filter === 'pets';
@@ -714,6 +727,117 @@ export const ShopTab: React.FC<ShopTabProps> = ({
                   );
                 })}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* 5b. Studio Doors Category */}
+        {showDoors && (
+          <div className="space-y-4 pt-4 border-t border-[#F1ECE2] first:pt-0 first:border-t-0">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <DoorOpen className="w-5 h-5 text-[#B45309]" />
+                <div>
+                  <h2 className="text-base font-semibold text-[#1F1D1A]">
+                    หมวดประตูห้องสตูดิโอ 3 มิติ ({buyableDoors.length} แบบ)
+                  </h2>
+                  <p className="text-xs text-[#6E675F]">
+                    เลือกเปลี่ยนดีไซน์ประตูให้เข้ากับโทนสีผนังและพื้นห้อง (ซื้อแล้วสลับใช้งานได้ตลอด)
+                  </p>
+                </div>
+              </div>
+              <span className="text-xs font-mono-num text-[#6E675F]">
+                {buyableDoors.length} รายการ
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {buyableDoors.map((door) => {
+                const isOwned = state.ownedDoors.includes(door.id);
+                const isActive = state.activeDoorId === door.id;
+                const canAfford = state.coins >= door.price;
+
+                return (
+                  <div
+                    key={door.id}
+                    className={`flex flex-col justify-between p-4 rounded-xl border transition-colors ${
+                      door.isSeasonal
+                        ? 'border-[#FECDD3] bg-[#FFF9FA]'
+                        : 'border-[#E7E1D6] bg-[#FAF8F4]'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3.5">
+                      <div className="w-16 h-20 rounded-xl overflow-hidden border border-black/10 shrink-0 shadow-xs bg-[#EFE8DC]">
+                        <DoorThumbnail doorId={door.id} className="w-full h-full" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                          <span className="font-mono-num font-medium text-[#2D6A4F]">
+                            {door.price === 0
+                              ? 'ประตูพื้นฐาน'
+                              : isOwned
+                              ? 'ได้ Fame แล้ว'
+                              : `+${door.fameBonus} Fame`}
+                          </span>
+                          {door.isSeasonal && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-[#FFF1F2] text-[#BE123C] text-[10px] font-semibold">
+                              อีเว้นท์ · ถึง 31 ธ.ค.
+                            </span>
+                          )}
+                        </div>
+                        <h3 className="text-sm sm:text-base font-semibold text-[#1F1D1A] mt-0.5">
+                          {door.name}
+                        </h3>
+                        <p className="text-xs text-[#6E675F] mt-1 leading-relaxed">
+                          {door.description}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 pt-3 mt-3 border-t border-[#EAE3D5]">
+                      <span className="text-xs text-[#6E675F]">
+                        {isActive
+                          ? 'ติดตั้งบนผนังซ้ายอยู่'
+                          : isOwned
+                          ? 'ปลดล็อกแล้ว'
+                          : door.isSeasonal
+                          ? 'ลิมิเต็ดถึง 31 ธ.ค.'
+                          : 'เปลี่ยนประตูห้อง 3D'}
+                      </span>
+                      {isOwned ? (
+                        <button
+                          type="button"
+                          onClick={() => onSelectDoor(door.id)}
+                          className={`px-3 py-1.5 min-h-[36px] rounded-xl text-xs font-medium whitespace-nowrap shrink-0 cursor-pointer ${
+                            isActive
+                              ? 'bg-[#ECFDF5] text-[#065F46] border border-[#A7F3D0]'
+                              : 'bg-white text-[#1F1D1A] border border-[#DED5C5] hover:bg-[#F1ECE2]'
+                          }`}
+                        >
+                          {isActive ? 'ใช้อยู่' : 'เลือกใช้'}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          disabled={!canAfford}
+                          onClick={() => onBuyDoor(door.id)}
+                          className={`inline-flex items-center gap-1 px-3 py-1.5 min-h-[36px] rounded-xl text-xs font-medium font-mono-num whitespace-nowrap shrink-0 ${
+                            canAfford
+                              ? door.isSeasonal
+                                ? 'bg-[#DC2626] text-white hover:bg-[#B91C1C] cursor-pointer'
+                                : 'bg-[#B45309] text-white hover:bg-[#92400E] cursor-pointer'
+                              : 'bg-[#E7E1D6] text-[#8C8377] cursor-not-allowed'
+                          }`}
+                        >
+                          <Coins className="w-3.5 h-3.5" />
+                          <span>{door.price}</span>
+                          <span>ซื้อประตู</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </div>
         )}
