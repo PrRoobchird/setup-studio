@@ -2,19 +2,24 @@ import * as THREE from 'three';
 import {
   createBauhausArtTexture,
   createCertificateTexture,
+  createPlasticineBumpTexture,
   createWovenRugTexture,
+  sculptClayGeo,
 } from './textures';
 
 function stdMat(
   color: number | string,
-  roughness = 0.72,
-  metalness = 0.04,
+  roughness = 0.84,
+  metalness = 0.02,
   extra?: THREE.MeshStandardMaterialParameters
 ): THREE.MeshStandardMaterial {
+  const isGlassOrSpecial = extra?.transparent === true || roughness < 0.25;
+  const bumpTex = isGlassOrSpecial ? null : createPlasticineBumpTexture(2, 2);
   return new THREE.MeshStandardMaterial({
     color,
-    roughness,
-    metalness,
+    roughness: Math.max(0.7, roughness),
+    metalness: Math.min(0.14, metalness),
+    ...(bumpTex ? { bumpMap: bumpTex, bumpScale: 0.011 } : {}),
     ...extra,
   });
 }
@@ -35,6 +40,11 @@ function addPart(
   mesh.receiveShadow = receiveShadow;
   parent.add(mesh);
   return mesh;
+}
+
+export interface FurnitureLampControl {
+  isLit: boolean;
+  setLit: (lit: boolean) => void;
 }
 
 export function buildFurniture3D(itemId: string, nightMode = false): THREE.Group {
@@ -119,17 +129,32 @@ export function buildFurniture3D(itemId: string, nightMode = false): THREE.Group
         }
       }
       addPart(group, new THREE.BoxGeometry(1.0, 0.045, 0.58), deskMat, [0, 0.64, -0.02]);
-      // Dual monitors
-      addPart(group, new THREE.BoxGeometry(0.42, 0.28, 0.025), bezelMat, [-0.2, 0.86, -0.16], [0, 0.18, 0]);
-      addPart(group, new THREE.PlaneGeometry(0.38, 0.24), screenMat, [-0.197, 0.86, -0.145], [0, 0.18, 0], false, false);
-      addPart(group, new THREE.BoxGeometry(0.34, 0.24, 0.025), bezelMat, [0.22, 0.84, -0.14], [0, -0.22, 0]);
-      addPart(group, new THREE.PlaneGeometry(0.3, 0.2), screenMat, [0.214, 0.84, -0.125], [0, -0.22, 0], false, false);
+      // Dual monitors (wrapped in tilted groups to eliminate coplanar Z-fighting)
+      const leftMon = new THREE.Group();
+      leftMon.position.set(-0.2, 0.86, -0.16);
+      leftMon.rotation.set(0, 0.18, 0);
+      addPart(leftMon, new THREE.BoxGeometry(0.42, 0.28, 0.025), bezelMat, [0, 0, 0]);
+      addPart(leftMon, new THREE.PlaneGeometry(0.38, 0.24), screenMat, [0, 0, 0.016], undefined, false, false);
+      group.add(leftMon);
+
+      const rightMon = new THREE.Group();
+      rightMon.position.set(0.22, 0.84, -0.14);
+      rightMon.rotation.set(0, -0.22, 0);
+      addPart(rightMon, new THREE.BoxGeometry(0.34, 0.24, 0.025), bezelMat, [0, 0, 0]);
+      addPart(rightMon, new THREE.PlaneGeometry(0.3, 0.2), screenMat, [0, 0, 0.016], undefined, false, false);
+      group.add(rightMon);
+
       // Monitor stands
       addPart(group, new THREE.CylinderGeometry(0.02, 0.025, 0.14, 8), legMat, [-0.2, 0.72, -0.18]);
       addPart(group, new THREE.CylinderGeometry(0.02, 0.025, 0.14, 8), legMat, [0.22, 0.72, -0.16]);
-      // Drawing tablet & keyboard
-      addPart(group, new THREE.BoxGeometry(0.28, 0.015, 0.18), bezelMat, [0.02, 0.67, 0.1], [-0.08, 0, 0]);
-      addPart(group, new THREE.BoxGeometry(0.24, 0.012, 0.14), screenMat, [0.02, 0.678, 0.1], [-Math.PI / 2 - 0.08, 0, 0], false, false);
+
+      // Drawing tablet lying flat with slight ergonomic tilt
+      const tabletGroup = new THREE.Group();
+      tabletGroup.position.set(0.02, 0.67, 0.1);
+      tabletGroup.rotation.set(-0.08, 0, 0);
+      addPart(tabletGroup, new THREE.BoxGeometry(0.28, 0.015, 0.18), bezelMat, [0, 0, 0]);
+      addPart(tabletGroup, new THREE.BoxGeometry(0.24, 0.006, 0.14), screenMat, [0, 0.008, 0], undefined, false, false);
+      group.add(tabletGroup);
       // Ergonomic chair
       addPart(group, new THREE.CylinderGeometry(0.18, 0.18, 0.05, 16), stdMat(0x475569, 0.8), [0, 0.42, 0.36]);
       addPart(group, new THREE.BoxGeometry(0.32, 0.34, 0.05), stdMat(0x475569, 0.8), [0, 0.62, 0.48]);
@@ -218,7 +243,7 @@ export function buildFurniture3D(itemId: string, nightMode = false): THREE.Group
       const shadeMat = new THREE.MeshStandardMaterial({
         color: 0xfff3d6,
         emissive: 0xffb85c,
-        emissiveIntensity: nightMode ? 1.5 : 0.25,
+        emissiveIntensity: nightMode ? 1.55 : 0.08,
         roughness: 0.75,
       });
 
@@ -233,11 +258,20 @@ export function buildFurniture3D(itemId: string, nightMode = false): THREE.Group
       addPart(group, new THREE.CylinderGeometry(0.065, 0.085, 0.08, 14), stdMat(0xd4a373, 0.45), [0.05, 0.6, -0.04]);
       addPart(group, new THREE.CylinderGeometry(0.018, 0.018, 0.14, 8), knobMat, [0.05, 0.69, -0.04]);
       addPart(group, new THREE.CylinderGeometry(0.11, 0.15, 0.18, 16), shadeMat, [0.05, 0.81, -0.04]);
-      if (nightMode) {
-        const pt = new THREE.PointLight(0xffbe6b, 1.35, 3.4);
-        pt.position.set(0.05, 0.86, 0.05);
-        group.add(pt);
-      }
+
+      const pt = new THREE.PointLight(0xffbe6b, nightMode ? 1.4 : 0, 3.6);
+      pt.position.set(0.05, 0.86, 0.05);
+      group.add(pt);
+
+      const lampControl: FurnitureLampControl = {
+        isLit: nightMode,
+        setLit: (lit: boolean) => {
+          lampControl.isLit = lit;
+          shadeMat.emissiveIntensity = lit ? (nightMode ? 1.6 : 1.15) : 0.06;
+          pt.intensity = lit ? (nightMode ? 1.45 : 0.95) : 0;
+        },
+      };
+      group.userData.lampControl = lampControl;
       break;
     }
 
@@ -278,9 +312,13 @@ export function buildFurniture3D(itemId: string, nightMode = false): THREE.Group
       addPart(group, new THREE.BoxGeometry(0.045, 1.32, 0.045), woodMat, [0, 0.64, -0.26], [-0.28, 0, 0]);
       // Tray
       addPart(group, new THREE.BoxGeometry(0.64, 0.04, 0.09), woodMat, [0, 0.56, 0.12], [0.15, 0, 0]);
-      // Canvas
-      addPart(group, new THREE.BoxGeometry(0.56, 0.68, 0.035), canvasMat, [0, 0.92, 0.06], [-0.14, 0, 0]);
-      addPart(group, new THREE.PlaneGeometry(0.5, 0.62), paintedMat, [0, 0.92, 0.08], [-0.14, 0, 0], false, false);
+      // Canvas in tilted sub-group so painting plane sits cleanly forward along local +Z
+      const canvasGroup = new THREE.Group();
+      canvasGroup.position.set(0, 0.92, 0.06);
+      canvasGroup.rotation.set(-0.14, 0, 0);
+      addPart(canvasGroup, new THREE.BoxGeometry(0.56, 0.68, 0.035), canvasMat, [0, 0, 0]);
+      addPart(canvasGroup, new THREE.PlaneGeometry(0.5, 0.62), paintedMat, [0, 0, 0.021], undefined, false, false);
+      group.add(canvasGroup);
       break;
     }
 
@@ -403,12 +441,12 @@ export function buildFurniture3D(itemId: string, nightMode = false): THREE.Group
       const eyeMat = stdMat(0x24201f, 0.2);
 
       // Cozy round pet cushion
-      addPart(group, new THREE.CylinderGeometry(0.32, 0.34, 0.09, 20), bedMat, [0, 0.045, 0]);
-      addPart(group, new THREE.CylinderGeometry(0.24, 0.26, 0.03, 18), stdMat(0xf5efe6, 0.9), [0, 0.095, 0]);
-      // Sitting orange cat
-      addPart(group, new THREE.SphereGeometry(0.14, 16, 14), catMat, [0, 0.21, -0.02]);
-      addPart(group, new THREE.SphereGeometry(0.105, 16, 14), bellyMat, [0, 0.2, 0.03]);
-      addPart(group, new THREE.SphereGeometry(0.115, 16, 14), catMat, [0, 0.37, 0.04]);
+      addPart(group, sculptClayGeo(new THREE.CylinderGeometry(0.32, 0.34, 0.09, 20), 0.002), bedMat, [0, 0.045, 0]);
+      addPart(group, sculptClayGeo(new THREE.CylinderGeometry(0.24, 0.26, 0.03, 18), 0.0015), stdMat(0xf5efe6, 0.9), [0, 0.095, 0]);
+      // Sitting orange terracotta cat
+      addPart(group, sculptClayGeo(new THREE.SphereGeometry(0.14, 16, 14), 0.002), catMat, [0, 0.21, -0.02]);
+      addPart(group, sculptClayGeo(new THREE.SphereGeometry(0.105, 16, 14), 0.0015), bellyMat, [0, 0.2, 0.03]);
+      addPart(group, sculptClayGeo(new THREE.SphereGeometry(0.115, 16, 14), 0.002), catMat, [0, 0.37, 0.04]);
       // Ears
       addPart(group, new THREE.ConeGeometry(0.042, 0.09, 4), catMat, [-0.07, 0.47, 0.03], [0, 0, 0.28]);
       addPart(group, new THREE.ConeGeometry(0.042, 0.09, 4), catMat, [0.07, 0.47, 0.03], [0, 0, -0.28]);
@@ -450,7 +488,7 @@ export function buildFurniture3D(itemId: string, nightMode = false): THREE.Group
       const leafMat = stdMat(0x3a7d56, 0.64);
       const leafLight = stdMat(0x4d996c, 0.62);
 
-      addPart(group, new THREE.CylinderGeometry(0.18, 0.13, 0.28, 16), potMat, [0, 0.14, 0]);
+      addPart(group, sculptClayGeo(new THREE.CylinderGeometry(0.18, 0.13, 0.28, 16), 0.0022), potMat, [0, 0.14, 0]);
       addPart(group, new THREE.CylinderGeometry(0.16, 0.16, 0.03, 14), soilMat, [0, 0.27, 0]);
       const leaves: [number, number, number, number, number, number][] = [
         [0, 0.56, 0, 0.2, 0, 0],
@@ -468,7 +506,7 @@ export function buildFurniture3D(itemId: string, nightMode = false): THREE.Group
           [rx * 0.6, ry, rz * 0.6]
         );
         const leaf = new THREE.Mesh(
-          new THREE.SphereGeometry(0.14, 12, 10),
+          sculptClayGeo(new THREE.SphereGeometry(0.14, 12, 10), 0.002),
           idx % 2 === 0 ? leafMat : leafLight
         );
         leaf.scale.set(1.0, 0.18, 1.25);
@@ -525,24 +563,32 @@ export function buildFurniture3D(itemId: string, nightMode = false): THREE.Group
 
       addPart(group, new THREE.CylinderGeometry(0.22, 0.24, 0.04, 16), standMat, [0, 0.02, 0]);
       addPart(group, new THREE.CylinderGeometry(0.025, 0.025, 0.78, 10), standMat, [0, 0.41, -0.04]);
-      addPart(group, new THREE.BoxGeometry(0.52, 0.62, 0.04), frameMat, [0, 0.92, 0.02], [-0.12, 0, 0]);
-      addPart(group, new THREE.PlaneGeometry(0.44, 0.54), certMat, [0, 0.92, 0.044], [-0.12, 0, 0], false, false);
+      const certGroup = new THREE.Group();
+      certGroup.position.set(0, 0.92, 0.02);
+      certGroup.rotation.set(-0.12, 0, 0);
+      addPart(certGroup, new THREE.BoxGeometry(0.52, 0.62, 0.04), frameMat, [0, 0, 0]);
+      addPart(certGroup, new THREE.PlaneGeometry(0.44, 0.54), certMat, [0, 0, 0.024], undefined, false, false);
+      group.add(certGroup);
       break;
     }
 
     case 'bauhaus_poster': {
-      const frameMat = stdMat(0x2e2a27, 0.5);
-      const legMat = stdMat(0xb88655, 0.6);
+      const frameMat = stdMat(0x2e2a27, 0.76);
+      const legMat = stdMat(0xb88655, 0.8);
       const artMat = new THREE.MeshStandardMaterial({
         map: createBauhausArtTexture(4),
-        roughness: 0.75,
+        roughness: 0.85,
       });
 
       addPart(group, new THREE.BoxGeometry(0.035, 1.05, 0.035), legMat, [-0.18, 0.52, 0.06], [0.12, 0, -0.08]);
       addPart(group, new THREE.BoxGeometry(0.035, 1.05, 0.035), legMat, [0.18, 0.52, 0.06], [0.12, 0, 0.08]);
       addPart(group, new THREE.BoxGeometry(0.035, 1.02, 0.035), legMat, [0, 0.5, -0.2], [-0.24, 0, 0]);
-      addPart(group, new THREE.BoxGeometry(0.54, 0.66, 0.035), frameMat, [0, 0.84, 0.04], [-0.12, 0, 0]);
-      addPart(group, new THREE.PlaneGeometry(0.48, 0.6), artMat, [0, 0.84, 0.062], [-0.12, 0, 0], false, false);
+      const posterGroup = new THREE.Group();
+      posterGroup.position.set(0, 0.84, 0.04);
+      posterGroup.rotation.set(-0.12, 0, 0);
+      addPart(posterGroup, new THREE.BoxGeometry(0.54, 0.66, 0.035), frameMat, [0, 0, 0]);
+      addPart(posterGroup, new THREE.PlaneGeometry(0.48, 0.6), artMat, [0, 0, 0.021], undefined, false, false);
+      group.add(posterGroup);
       break;
     }
 
@@ -551,7 +597,7 @@ export function buildFurniture3D(itemId: string, nightMode = false): THREE.Group
       const paperMat = new THREE.MeshStandardMaterial({
         color: 0xfff8eb,
         emissive: 0xffb347,
-        emissiveIntensity: nightMode ? 1.65 : 0.32,
+        emissiveIntensity: nightMode ? 1.65 : 0.1,
         roughness: 0.88,
       });
       const ribMat = stdMat(0xe5d6bc, 0.85);
@@ -572,11 +618,201 @@ export function buildFurniture3D(itemId: string, nightMode = false): THREE.Group
       shade.castShadow = true;
       group.add(shade);
       addPart(group, new THREE.TorusGeometry(0.22, 0.008, 8, 24), ribMat, [0, 0.72, 0], [Math.PI / 2, 0, 0]);
+
+      const pt = new THREE.PointLight(0xffb85c, nightMode ? 1.45 : 0, 3.8);
+      pt.position.set(0, 0.74, 0);
+      group.add(pt);
+
+      const lampControl: FurnitureLampControl = {
+        isLit: nightMode,
+        setLit: (lit: boolean) => {
+          lampControl.isLit = lit;
+          paperMat.emissiveIntensity = lit ? (nightMode ? 1.7 : 1.25) : 0.08;
+          pt.intensity = lit ? (nightMode ? 1.5 : 1.0) : 0;
+        },
+      };
+      group.userData.lampControl = lampControl;
+      break;
+    }
+
+    case 'xmas_tree': {
+      const potMat = stdMat(0xb45309, 0.72);
+      const trunkMat = stdMat(0x6b4423, 0.85);
+      const pineDark = stdMat(0x1f6b43, 0.78);
+      const pineLight = stdMat(0x2d8a56, 0.76);
+      const starMat = new THREE.MeshStandardMaterial({
+        color: 0xfacc15,
+        emissive: 0xf59e0b,
+        emissiveIntensity: nightMode ? 1.5 : 0.4,
+        roughness: 0.25,
+        metalness: 0.35,
+      });
+
+      addPart(group, new THREE.CylinderGeometry(0.2, 0.15, 0.22, 16), potMat, [0, 0.11, 0]);
+      addPart(group, new THREE.CylinderGeometry(0.06, 0.07, 0.2, 12), trunkMat, [0, 0.28, 0]);
+      addPart(group, new THREE.ConeGeometry(0.42, 0.5, 18), pineDark, [0, 0.56, 0]);
+      addPart(group, new THREE.ConeGeometry(0.34, 0.44, 18), pineLight, [0, 0.82, 0]);
+      addPart(group, new THREE.ConeGeometry(0.24, 0.38, 18), pineDark, [0, 1.08, 0]);
+      // Golden star topper
+      addPart(group, new THREE.OctahedronGeometry(0.08, 0), starMat, [0, 1.32, 0]);
+
+      // Ornaments around tiers
+      const orbColors = [0xef4444, 0xfacc15, 0xf8fafc, 0x38bdf8];
+      for (let i = 0; i < 8; i++) {
+        const ang = (i / 8) * Math.PI * 2;
+        const tierR = i % 2 === 0 ? 0.31 : 0.22;
+        const tierY = i % 2 === 0 ? 0.48 : 0.78;
+        const orbMat = new THREE.MeshStandardMaterial({
+          color: orbColors[i % orbColors.length],
+          emissive: nightMode ? orbColors[i % orbColors.length] : 0x000000,
+          emissiveIntensity: nightMode ? 0.65 : 0,
+          roughness: 0.25,
+          metalness: 0.2,
+        });
+        addPart(
+          group,
+          new THREE.SphereGeometry(0.042, 12, 10),
+          orbMat,
+          [Math.cos(ang) * tierR, tierY, Math.sin(ang) * tierR]
+        );
+      }
       if (nightMode) {
-        const pt = new THREE.PointLight(0xffb85c, 1.4, 3.6);
-        pt.position.set(0, 0.74, 0);
+        const pt = new THREE.PointLight(0xfde68a, 1.25, 3.2);
+        pt.position.set(0, 0.95, 0.1);
         group.add(pt);
       }
+      break;
+    }
+
+    case 'xmas_wreath_stand': {
+      const standMat = stdMat(0xc9935f, 0.62);
+      const pineMat = stdMat(0x1f7a4c, 0.78);
+      const redMat = stdMat(0xdc2626, 0.55);
+      const goldMat = stdMat(0xfacc15, 0.35, 0.35);
+      const boxGreen = stdMat(0x16a34a, 0.65);
+
+      // Gift boxes stacked on base
+      addPart(group, new THREE.BoxGeometry(0.38, 0.24, 0.32), redMat, [-0.12, 0.12, 0.08]);
+      addPart(group, new THREE.BoxGeometry(0.39, 0.25, 0.05), goldMat, [-0.12, 0.12, 0.08]);
+      addPart(group, new THREE.BoxGeometry(0.28, 0.2, 0.28), boxGreen, [0.18, 0.1, 0.12], [0, 0.25, 0]);
+      addPart(group, new THREE.BoxGeometry(0.29, 0.21, 0.045), redMat, [0.18, 0.1, 0.12], [0, 0.25, 0]);
+      // Wooden display easel & festive holly wreath
+      addPart(group, new THREE.CylinderGeometry(0.025, 0.03, 0.92, 10), standMat, [0, 0.46, -0.14]);
+      addPart(group, new THREE.CylinderGeometry(0.18, 0.2, 0.04, 16), standMat, [0, 0.02, -0.14]);
+      addPart(group, new THREE.TorusGeometry(0.24, 0.068, 12, 24), pineMat, [0, 0.76, -0.08]);
+      addPart(group, new THREE.SphereGeometry(0.045, 10, 10), redMat, [0, 0.54, -0.02]);
+      addPart(group, new THREE.SphereGeometry(0.032, 10, 10), goldMat, [-0.18, 0.86, -0.02]);
+      addPart(group, new THREE.SphereGeometry(0.032, 10, 10), goldMat, [0.18, 0.86, -0.02]);
+      break;
+    }
+
+    case 'ny_countdown_lamp': {
+      const baseMat = stdMat(0x28313d, 0.38, 0.3);
+      const goldMat = new THREE.MeshStandardMaterial({
+        color: 0xfde047,
+        emissive: 0xf59e0b,
+        emissiveIntensity: nightMode ? 1.55 : 0.14,
+        roughness: 0.22,
+        metalness: 0.45,
+      });
+      const ringMat = stdMat(0xf4efe6, 0.55);
+
+      addPart(group, new THREE.CylinderGeometry(0.22, 0.26, 0.1, 20), baseMat, [0, 0.05, 0]);
+      addPart(group, new THREE.CylinderGeometry(0.028, 0.028, 0.42, 12), baseMat, [0, 0.3, 0]);
+      addPart(group, new THREE.TorusGeometry(0.24, 0.026, 12, 28), ringMat, [0, 0.68, 0]);
+      addPart(group, new THREE.OctahedronGeometry(0.13, 0), goldMat, [0, 0.68, 0]);
+      addPart(group, new THREE.SphereGeometry(0.036, 10, 10), goldMat, [-0.22, 0.82, 0.04]);
+      addPart(group, new THREE.SphereGeometry(0.036, 10, 10), goldMat, [0.22, 0.82, -0.04]);
+
+      const pt = new THREE.PointLight(0xfcd34d, nightMode ? 1.45 : 0, 3.6);
+      pt.position.set(0, 0.72, 0.1);
+      group.add(pt);
+
+      const lampControl: FurnitureLampControl = {
+        isLit: nightMode,
+        setLit: (lit: boolean) => {
+          lampControl.isLit = lit;
+          goldMat.emissiveIntensity = lit ? (nightMode ? 1.65 : 1.25) : 0.1;
+          pt.intensity = lit ? (nightMode ? 1.5 : 1.0) : 0;
+        },
+      };
+      group.userData.lampControl = lampControl;
+      break;
+    }
+
+    case 'xmas_snowman_plush': {
+      const matRug = stdMat(0xdbeafe, 0.92);
+      const snowMat = stdMat(0xf8fafc, 0.88);
+      const scarfMat = stdMat(0xdc2626, 0.82);
+      const hatMat = stdMat(0x1f2937, 0.68);
+      const carrotMat = stdMat(0xf97316, 0.6);
+      const eyeMat = stdMat(0x1e293b, 0.25);
+
+      addPart(group, new THREE.CylinderGeometry(0.34, 0.36, 0.025, 24), matRug, [0, 0.012, 0], undefined, false, true);
+      addPart(group, new THREE.SphereGeometry(0.2, 20, 16), snowMat, [0, 0.2, 0]);
+      addPart(group, new THREE.SphereGeometry(0.145, 20, 16), snowMat, [0, 0.45, 0]);
+      // Red knitted scarf
+      addPart(group, new THREE.TorusGeometry(0.13, 0.032, 10, 22), scarfMat, [0, 0.34, 0], [Math.PI / 2, 0, 0]);
+      addPart(group, new THREE.BoxGeometry(0.055, 0.15, 0.035), scarfMat, [0.08, 0.26, 0.11], [0.2, 0, -0.2]);
+      // Top hat
+      addPart(group, new THREE.CylinderGeometry(0.14, 0.14, 0.02, 18), hatMat, [0, 0.58, 0]);
+      addPart(group, new THREE.CylinderGeometry(0.09, 0.095, 0.13, 18), hatMat, [0, 0.65, 0]);
+      addPart(group, new THREE.CylinderGeometry(0.096, 0.096, 0.025, 18), scarfMat, [0, 0.6, 0]);
+      // Eyes & carrot nose
+      addPart(group, new THREE.SphereGeometry(0.016, 8, 8), eyeMat, [-0.045, 0.47, 0.132]);
+      addPart(group, new THREE.SphereGeometry(0.016, 8, 8), eyeMat, [0.045, 0.47, 0.132]);
+      addPart(group, new THREE.ConeGeometry(0.018, 0.075, 10), carrotMat, [0, 0.44, 0.16], [Math.PI / 2, 0, 0]);
+      break;
+    }
+
+    case 'pet_bowl_set': {
+      const woodMat = stdMat(0xc7925b, 0.65);
+      const ceramicMat = stdMat(0xfaf8f4, 0.35);
+      const kibbleMat = stdMat(0x7c4a26, 0.85);
+      const waterMat = stdMat(0x38bdf8, 0.18);
+      const bottleMat = stdMat(0xe0f2fe, 0.25);
+
+      addPart(group, new THREE.BoxGeometry(0.62, 0.08, 0.32), woodMat, [0, 0.04, 0]);
+      addPart(group, new THREE.CylinderGeometry(0.11, 0.09, 0.06, 18), ceramicMat, [-0.15, 0.09, 0]);
+      addPart(group, new THREE.SphereGeometry(0.075, 12, 8), kibbleMat, [-0.15, 0.1, 0]);
+      addPart(group, new THREE.CylinderGeometry(0.11, 0.09, 0.06, 18), ceramicMat, [0.15, 0.09, 0]);
+      addPart(group, new THREE.CylinderGeometry(0.085, 0.085, 0.02, 16), waterMat, [0.15, 0.11, 0]);
+      addPart(group, new THREE.CylinderGeometry(0.05, 0.05, 0.22, 14), bottleMat, [0, 0.18, -0.1]);
+      break;
+    }
+
+    case 'pet_play_tunnel': {
+      const tunnelMat = stdMat(0xf472b6, 0.86, 0.02, { side: THREE.DoubleSide });
+      const stripeMat = stdMat(0xfde68a, 0.86);
+      const ballMat = stdMat(0x38bdf8, 0.76);
+      const matBase = stdMat(0xf5efe6, 0.9);
+
+      addPart(group, new THREE.CylinderGeometry(0.42, 0.44, 0.02, 24), matBase, [0, 0.01, 0], undefined, false, true);
+      addPart(group, new THREE.CylinderGeometry(0.2, 0.2, 0.62, 20, 1, true), tunnelMat, [0, 0.21, 0], [0, 0, Math.PI / 2]);
+      addPart(group, new THREE.TorusGeometry(0.2, 0.024, 10, 22), stripeMat, [-0.31, 0.21, 0], [0, Math.PI / 2, 0]);
+      addPart(group, new THREE.TorusGeometry(0.2, 0.024, 10, 22), stripeMat, [0.31, 0.21, 0], [0, Math.PI / 2, 0]);
+      addPart(group, sculptClayGeo(new THREE.SphereGeometry(0.08, 14, 14), 0.0018), ballMat, [0.22, 0.08, 0.24]);
+      break;
+    }
+
+    case 'pet_grooming_cart': {
+      const frameMat = stdMat(0x475569, 0.45, 0.25);
+      const trayMat = stdMat(0xf8fafc, 0.6);
+      const towelMat = stdMat(0x7dd3fc, 0.85);
+      const bottleMat = stdMat(0xec4899, 0.4);
+      const brushMat = stdMat(0xd99b66, 0.65);
+
+      for (const sx of [-0.24, 0.24]) {
+        for (const sz of [-0.16, 0.16]) {
+          addPart(group, new THREE.CylinderGeometry(0.018, 0.018, 0.64, 8), frameMat, [sx, 0.34, sz]);
+          addPart(group, new THREE.SphereGeometry(0.032, 10, 10), frameMat, [sx, 0.032, sz]);
+        }
+      }
+      addPart(group, new THREE.BoxGeometry(0.54, 0.04, 0.36), trayMat, [0, 0.22, 0]);
+      addPart(group, new THREE.BoxGeometry(0.54, 0.04, 0.36), trayMat, [0, 0.56, 0]);
+      addPart(group, new THREE.BoxGeometry(0.22, 0.08, 0.2), towelMat, [-0.12, 0.28, 0]);
+      addPart(group, new THREE.CylinderGeometry(0.045, 0.045, 0.16, 12), bottleMat, [-0.14, 0.66, 0.04]);
+      addPart(group, new THREE.BoxGeometry(0.16, 0.03, 0.08), brushMat, [0.12, 0.6, -0.02]);
       break;
     }
 

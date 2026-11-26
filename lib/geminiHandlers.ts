@@ -270,8 +270,17 @@ export async function handleCritiqueRequest(body: Record<string, unknown>): Prom
       ? Math.min(10, Math.max(0, Math.round(rawStars)))
       : 5;
 
-    const coinsEarned = Math.min(300, Math.max(20, 20 + starRating * 28));
-    const fameEarned = Math.min(50, Math.max(0, starRating * 5));
+    const coinsEarned = Math.min(135, Math.max(15, 15 + starRating * 12));
+    const fameEarned =
+      starRating >= 10
+        ? 4
+        : starRating >= 8
+        ? 3
+        : starRating >= 6
+        ? 2
+        : starRating >= 3
+        ? 1
+        : 0;
 
     return {
       status: 200,

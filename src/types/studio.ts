@@ -1,4 +1,4 @@
-export type TabId = 'studio' | 'critique' | 'shop' | 'classmates';
+export type TabId = 'studio' | 'critique' | 'quiz' | 'shop' | 'classmates';
 
 export type MajorTrack =
   | 'สถาปัตยกรรม'
@@ -7,7 +7,7 @@ export type MajorTrack =
   | 'แฟชั่นดีไซน์'
   | 'วิจิตรศิลป์ & แอนิเมชัน';
 
-export type ItemCategory = 'furniture' | 'equipment' | 'decor';
+export type ItemCategory = 'furniture' | 'equipment' | 'decor' | 'frames' | 'petgear';
 
 export interface StudioItemDef {
   id: string;
@@ -18,6 +18,9 @@ export interface StudioItemDef {
   fameBonus: number;
   description: string;
   accentHex: string;
+  isSeasonal?: boolean;
+  eventTag?: string;
+  frameOrientation?: WallFrameType;
 }
 
 export interface WallTheme {
@@ -42,23 +45,114 @@ export interface FloorTheme {
   swatchColor: string;
 }
 
+export interface WindowViewTheme {
+  id: string;
+  name: string;
+  price: number;
+  fameBonus: number;
+  description: string;
+  skyTop: string;
+  skyBottom: string;
+  nightSkyTop: string;
+  nightSkyBottom: string;
+  accentHex: string;
+  isSeasonal?: boolean;
+  eventTag?: string;
+}
+
+export type PetSpecies = 'dog' | 'cat' | 'goldfish' | 'hedgehog' | 'snake';
+export type PetHealthStatus = 'healthy' | 'sick';
+
+export interface PetBreedDef {
+  id: string;
+  species: PetSpecies;
+  speciesLabel: string;
+  breedName: string;
+  price: number;
+  returnFee: number;
+  fameBonus: number;
+  description: string;
+  primaryHex: string;
+  secondaryHex: string;
+  eyeHex: string;
+  enclosureName: string;
+  gridW: number;
+  gridH: number;
+}
+
+export interface PetFoodDef {
+  id: string;
+  species: PetSpecies;
+  name: string;
+  price: number;
+  servings: number;
+  description: string;
+  accentHex: string;
+}
+
+export interface OwnedPet {
+  instanceId: string;
+  breedId: string;
+  species: PetSpecies;
+  nickname: string;
+  x: number;
+  y: number;
+  rotationStep: number; // 0..3
+  adoptedAt: number;
+  lastFedAt: number;
+  status: PetHealthStatus;
+}
+
 export interface PlacedItem {
   instanceId: string;
   itemId: string;
-  x: number; // 0..4
-  y: number; // 0..4
+  x: number; // 0..4 (or 0..6 when expanded)
+  y: number; // 0..4 (or 0..6 when expanded)
   rotationStep?: number; // 0, 1, 2, 3 (90 deg increments in 3D)
   flipped?: boolean;
 }
 
+export type WallFrameType = 'landscape' | 'portrait';
+
+export interface WallFrameArtwork {
+  id: string;
+  title: string;
+  imageDataUrl: string;
+  updatedAt: string;
+}
+
 export type AvatarSlot = 'outfit' | 'headwear' | 'glasses' | 'handItem';
 
-export type HairStyleId = 'bob' | 'ponytail' | 'wavy' | 'messy_short' | 'twintails';
+export type AvatarGender = 'female' | 'male';
+
+export type HairStyleId =
+  | 'bob'
+  | 'ponytail'
+  | 'wavy'
+  | 'messy_short'
+  | 'twintails'
+  | 'wolf_cut'
+  | 'bun'
+  | 'side_part'
+  | 'comma_hair'
+  | 'two_block'
+  | 'curly_crop'
+  | 'slick_back';
+
+export type EyeStyleId = 'classic' | 'sparkle' | 'chill' | 'sharp';
+export type EyebrowStyleId = 'soft' | 'straight' | 'arched';
+export type MouthStyleId = 'smile' | 'cat' | 'grin' | 'calm';
+export type BlushStyleId = 'rosy' | 'peach' | 'none';
 
 export interface AvatarConfig {
+  gender?: AvatarGender;
   skinToneHex: string;
   hairStyleId: HairStyleId;
   hairColorHex: string;
+  eyeStyleId?: EyeStyleId;
+  eyebrowStyleId?: EyebrowStyleId;
+  mouthStyleId?: MouthStyleId;
+  blushStyleId?: BlushStyleId;
   outfitId: string;
   headwearId: string;
   glassesId: string;
@@ -75,6 +169,8 @@ export interface AvatarItemDef {
   description: string;
   primaryHex: string;
   secondaryHex: string;
+  isSeasonal?: boolean;
+  eventTag?: string;
 }
 
 export type ArtCategory =
@@ -145,15 +241,28 @@ export interface StudioGameState {
   studentName: string;
   majorTrack: MajorTrack;
   coins: number;
-  fame: number;
+  fame: number; // Max 500
+  studioExpanded: boolean;
   ownedItems: Record<string, number>;
   ownedWalls: string[];
   ownedFloors: string[];
+  ownedWindowViews: string[];
   activeWallId: string;
   activeFloorId: string;
+  activeWindowViewId: string;
   placedItems: PlacedItem[];
+  ownedWallFrames: WallFrameType[];
+  wallFrameArtworks: {
+    landscape: WallFrameArtwork | null;
+    portrait: WallFrameArtwork | null;
+  };
+  pets: OwnedPet[];
+  petFood: Record<PetSpecies, number>;
+  heartlessPenaltyUntil: number | null;
+  deadPetCount: number;
   avatar: AvatarConfig;
   ownedAvatarItems: string[];
+  hasSelectedGender?: boolean;
   gallery: ArtSubmission[];
   votedClassmates: Record<string, StickerType>;
   quizCorrectCount: number;

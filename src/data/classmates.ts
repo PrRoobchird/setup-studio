@@ -22,6 +22,7 @@ export const CLASSMATE_STUDIOS: ClassmateStudio[] = [
       { instanceId: 'p7', itemId: 'beanbag_yellow', x: 1, y: 4, rotationStep: 0 },
     ],
     avatar: {
+      gender: 'male',
       skinToneHex: '#F6CCA9',
       hairStyleId: 'messy_short',
       hairColorHex: '#282529',
@@ -56,6 +57,7 @@ export const CLASSMATE_STUDIOS: ClassmateStudio[] = [
       { instanceId: 'm5', itemId: 'beanbag_purple', x: 2, y: 3, rotationStep: 0 },
     ],
     avatar: {
+      gender: 'female',
       skinToneHex: '#FCE2D2',
       hairStyleId: 'twintails',
       hairColorHex: '#E38FA3',
@@ -91,6 +93,7 @@ export const CLASSMATE_STUDIOS: ClassmateStudio[] = [
       { instanceId: 'k6', itemId: 'studio_cat', x: 2, y: 2, rotationStep: 0 },
     ],
     avatar: {
+      gender: 'female',
       skinToneHex: '#FCE2D2',
       hairStyleId: 'wavy',
       hairColorHex: '#9A6F52',
@@ -125,6 +128,7 @@ export const CLASSMATE_STUDIOS: ClassmateStudio[] = [
       { instanceId: 't5', itemId: 'blueprint_basket', x: 4, y: 1, rotationStep: 0 },
     ],
     avatar: {
+      gender: 'male',
       skinToneHex: '#E0AC82',
       hairStyleId: 'ponytail',
       hairColorHex: '#3F5D8C',
@@ -159,6 +163,7 @@ export const CLASSMATE_STUDIOS: ClassmateStudio[] = [
       { instanceId: 'r5', itemId: 'beanbag_purple', x: 2, y: 3, rotationStep: 0 },
     ],
     avatar: {
+      gender: 'female',
       skinToneHex: '#FCE2D2',
       hairStyleId: 'bob',
       hairColorHex: '#543D33',

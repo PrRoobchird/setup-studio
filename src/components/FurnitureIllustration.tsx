@@ -385,6 +385,108 @@ export const FurnitureIllustration: React.FC<FurnitureIllustrationProps> = ({
           <path d="M-14,-48 Q0,-43 14,-48 M-15,-40 Q0,-35 15,-40 M-12,-56 Q0,-52 12,-56" fill="none" stroke="#EAE0CE" strokeWidth="1" />
         </g>
       )}
+
+      {itemId === 'wall_frame_landscape' && (
+        <g>
+          <rect x="-32" y="-56" width="64" height="44" rx="4" fill="#A6784B" />
+          <rect x="-27" y="-51" width="54" height="34" rx="2" fill="#FAF6EE" />
+          <rect x="-22" y="-46" width="44" height="24" fill="#DCEBFB" />
+          <path d="M-22,-22 L-6,-38 L6,-28 L14,-35 L22,-22 Z" fill="#E07A5F" />
+          <circle cx="11" cy="-40" r="4" fill="#F59E0B" />
+        </g>
+      )}
+
+      {itemId === 'wall_frame_portrait' && (
+        <g>
+          <rect x="-22" y="-68" width="44" height="60" rx="4" fill="#3B342E" />
+          <rect x="-17" y="-63" width="34" height="50" rx="2" fill="#FAF6EE" />
+          <rect x="-12" y="-58" width="24" height="40" fill="#F1E7D8" />
+          <circle cx="0" cy="-41" r="7.5" fill="#2563EB" />
+          <polygon points="-10,-22 10,-22 0,-34" fill="#E11D48" />
+        </g>
+      )}
+
+      {itemId === 'xmas_tree' && (
+        <g>
+          <polygon points="-10,-12 10,-12 8,4 -8,4" fill="#B45309" />
+          <polygon points="-24,-14 24,-14 0,-40" fill="#15803D" />
+          <polygon points="-20,-30 20,-30 0,-56" fill="#16A34A" />
+          <polygon points="-14,-46 14,-46 0,-70" fill="#22C55E" />
+          <polygon points="0,-78 3,-71 10,-71 4,-67 6,-60 0,-64 -6,-60 -4,-67 -10,-71 -3,-71" fill="#FACC15" />
+          <circle cx="-8" cy="-22" r="3" fill="#EF4444" />
+          <circle cx="8" cy="-24" r="3" fill="#FACC15" />
+          <circle cx="-5" cy="-40" r="2.8" fill="#38BDF8" />
+          <circle cx="6" cy="-42" r="2.8" fill="#EF4444" />
+        </g>
+      )}
+
+      {itemId === 'xmas_wreath_stand' && (
+        <g>
+          <line x1="0" y1="-60" x2="0" y2="4" stroke="#A6784B" strokeWidth="3.5" strokeLinecap="round" />
+          <circle cx="0" cy="-48" r="16" fill="none" stroke="#15803D" strokeWidth="7" />
+          <circle cx="-6" cy="-58" r="2.5" fill="#EF4444" />
+          <circle cx="8" cy="-54" r="2.5" fill="#FACC15" />
+          <rect x="-18" y="-12" width="18" height="14" rx="2" fill="#DC2626" />
+          <rect x="-11" y="-12" width="4" height="14" fill="#FACC15" />
+          <rect x="2" y="-8" width="16" height="11" rx="2" fill="#16A34A" />
+          <rect x="8" y="-8" width="4" height="11" fill="#DC2626" />
+        </g>
+      )}
+
+      {itemId === 'ny_countdown_lamp' && (
+        <g>
+          <ellipse cx="0" cy="2" rx="14" ry="5" fill="#334155" />
+          <line x1="0" y1="0" x2="0" y2="-28" stroke="#475569" strokeWidth="3.5" />
+          <circle cx="0" cy="-46" r="22" fill="#FEF08A" opacity="0.45" />
+          <circle cx="0" cy="-46" r="16" fill="none" stroke="#F5EFE6" strokeWidth="3" />
+          <polygon points="0,-57 4,-49 12,-49 6,-44 8,-36 0,-41 -8,-36 -6,-44 -12,-49 -4,-49" fill="#FACC15" />
+        </g>
+      )}
+
+      {itemId === 'xmas_snowman_plush' && (
+        <g>
+          <ellipse cx="0" cy="4" rx="22" ry="8" fill="#DBEAFE" />
+          <circle cx="0" cy="-12" r="14" fill="#F8FAFC" />
+          <circle cx="0" cy="-32" r="10.5" fill="#F8FAFC" />
+          <rect x="-9" y="-25" width="18" height="5" rx="2.5" fill="#DC2626" />
+          <rect x="-10" y="-44" width="20" height="3.5" rx="1.5" fill="#1F2937" />
+          <rect x="-6.5" y="-54" width="13" height="10" rx="1.5" fill="#1F2937" />
+          <circle cx="-3.5" cy="-34" r="1.5" fill="#1E293B" />
+          <circle cx="3.5" cy="-34" r="1.5" fill="#1E293B" />
+          <polygon points="0,-32 8,-30 0,-28" fill="#F97316" />
+        </g>
+      )}
+
+      {itemId === 'pet_bowl_set' && (
+        <g>
+          <rect x="-24" y="-12" width="48" height="12" rx="4" fill="#C7925B" />
+          <ellipse cx="-11" cy="-14" rx="9" ry="4.5" fill="#FAF8F4" stroke="#6E675F" strokeWidth="1.5" />
+          <ellipse cx="-11" cy="-15" rx="6" ry="2.8" fill="#7C4A26" />
+          <ellipse cx="11" cy="-14" rx="9" ry="4.5" fill="#FAF8F4" stroke="#6E675F" strokeWidth="1.5" />
+          <ellipse cx="11" cy="-15" rx="6" ry="2.8" fill="#38BDF8" />
+        </g>
+      )}
+
+      {itemId === 'pet_play_tunnel' && (
+        <g>
+          <ellipse cx="0" cy="4" rx="26" ry="10" fill="#F5EFE6" />
+          <rect x="-20" y="-28" width="40" height="24" rx="12" fill="#F472B6" />
+          <ellipse cx="-20" cy="-16" rx="7" ry="12" fill="#831843" stroke="#FDE68A" strokeWidth="3" />
+          <circle cx="16" cy="-4" r="6" fill="#38BDF8" />
+        </g>
+      )}
+
+      {itemId === 'pet_grooming_cart' && (
+        <g>
+          <line x1="-18" y1="-50" x2="-18" y2="2" stroke="#475569" strokeWidth="3" />
+          <line x1="18" y1="-50" x2="18" y2="2" stroke="#475569" strokeWidth="3" />
+          <rect x="-20" y="-20" width="40" height="6" rx="2" fill="#F8FAFC" />
+          <rect x="-20" y="-44" width="40" height="6" rx="2" fill="#F8FAFC" />
+          <rect x="-12" y="-58" width="10" height="14" rx="3" fill="#EC4899" />
+          <rect x="4" y="-50" width="12" height="6" rx="2" fill="#D99B66" />
+          <rect x="-12" y="-28" width="22" height="8" rx="2" fill="#7DD3FC" />
+        </g>
+      )}
     </g>
   );
 };

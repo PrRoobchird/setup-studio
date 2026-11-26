@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Check, Coins, HeartHandshake, Star, Users } from 'lucide-react';
 import { CLASSMATE_STUDIOS } from '../data/classmates';
+import { CLASSMATE_STICKER_REWARD } from '../data/catalog';
 import { StickerType } from '../types/studio';
 import { StudioRoom3D } from './StudioRoom3D';
 
@@ -36,7 +37,7 @@ export const ClassmatesTab: React.FC<ClassmatesTabProps> = ({
             ส่องสตูดิโอเพื่อน & รุ่นพี่
           </h1>
           <p className="text-xs text-[#6E675F] mt-1">
-            แวะชมไอเดียแต่งห้อง 3D ดูแฟชั่นอวตาร ผลงานพอร์ตโฟลิโอ และส่งสติกเกอร์เพื่อรับโบนัส +20 💡 ต่อคน
+            แวะชมไอเดียแต่งห้อง 3D ดูแฟชั่นอวตาร ผลงานพอร์ตโฟลิโอ และส่งสติกเกอร์เพื่อรับโบนัส +{CLASSMATE_STICKER_REWARD} 💡 ต่อคน
           </p>
         </div>
 
@@ -79,7 +80,7 @@ export const ClassmatesTab: React.FC<ClassmatesTabProps> = ({
                       <Check className="w-3.5 h-3.5" /> โหวตแล้ว
                     </span>
                   ) : (
-                    <span className="text-[#2563EB] font-medium">+20 💡</span>
+                    <span className="text-[#2563EB] font-medium">+{CLASSMATE_STICKER_REWARD} 💡</span>
                   )}
                 </span>
               </button>
@@ -139,12 +140,12 @@ export const ClassmatesTab: React.FC<ClassmatesTabProps> = ({
               </div>
               {votedSticker ? (
                 <span className="text-xs font-medium text-[#2D6A4F]">
-                  ส่งแล้ว: "{votedSticker}" · เพื่อน +10 Fame, คุณ +20 💡
+                  ส่งแล้ว: "{votedSticker}" · เพื่อน +10 Fame, คุณ +{CLASSMATE_STICKER_REWARD} 💡
                 </span>
               ) : (
                 <span className="text-xs text-[#2563EB] font-medium inline-flex items-center gap-1">
                   <Coins className="w-3.5 h-3.5" />
-                  รับโบนัส +20 Idea Coins (1 ครั้ง/คน)
+                  รับโบนัส +{CLASSMATE_STICKER_REWARD} Idea Coins (1 ครั้ง/คน)
                 </span>
               )}
             </div>
