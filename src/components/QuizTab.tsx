@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
+  BookOpen,
   Brain,
   CalendarCheck2,
   CheckCircle2,
@@ -18,20 +19,24 @@ import {
   getLocalDateKey,
   pickNonRepeatingQuizQuestion,
 } from '../data/tpatQuizBank';
-import { QuizQuestion, StudioGameState } from '../types/studio';
+import { QuizExamCode, QuizQuestion, StudioGameState } from '../types/studio';
 
 interface QuizTabProps {
   state: StudioGameState;
+  initialTrack?: QuizTrackFilter;
   onQuizAnswered: (questionId: string, isCorrect: boolean) => void;
   onGoToCritique: () => void;
   onGoToShop: () => void;
+  onGoToLibrary?: (examCode?: QuizExamCode) => void;
 }
 
 export const QuizTab: React.FC<QuizTabProps> = ({
   state,
+  initialTrack,
   onQuizAnswered,
   onGoToCritique,
   onGoToShop,
+  onGoToLibrary,
 }) => {
   const [quiz, setQuiz] = useState<QuizQuestion | null>(null);
   const [quizLoading, setQuizLoading] = useState(false);
@@ -39,8 +44,14 @@ export const QuizTab: React.FC<QuizTabProps> = ({
   const [poolNotice, setPoolNotice] = useState<string | null>(null);
   const [selectedOption, setSelectedOption] = useState<number | null>(null);
   const [askedQuestions, setAskedQuestions] = useState<string[]>([]);
-  const [trackFilter, setTrackFilter] = useState<QuizTrackFilter>('mixed');
+  const [trackFilter, setTrackFilter] = useState<QuizTrackFilter>(initialTrack ?? 'mixed');
   const [eraFilter, setEraFilter] = useState<QuizEraFilter>('all');
+
+  useEffect(() => {
+    if (initialTrack) {
+      setTrackFilter(initialTrack);
+    }
+  }, [initialTrack]);
 
   const todayKey = getLocalDateKey();
   const usedToday = state.dailyQuizDate === todayKey ? state.dailyQuizCount : 0;
@@ -475,8 +486,8 @@ export const QuizTab: React.FC<QuizTabProps> = ({
           </div>
         </div>
 
-        {/* Study Tip */}
-        <div className="bg-[#FAF6EE] border border-[#E5DCCB] rounded-2xl p-5 text-xs text-[#6E675F] space-y-2">
+        {/* Study Tip & Library Link */}
+        <div className="bg-[#FAF6EE] border border-[#E5DCCB] rounded-2xl p-5 text-xs text-[#6E675F] space-y-3">
           <div className="font-semibold text-sm text-[#1F1D1A] flex items-center gap-1.5">
             <Star className="w-4 h-4 text-[#D97706]" />
             เคล็ดลับเก็บเหรียญ &amp; ความรู้
@@ -485,6 +496,18 @@ export const QuizTab: React.FC<QuizTabProps> = ({
             ทำควิซวันละ 5 ข้อควบคู่กับการส่งงานสเก็ตช์ตรวจจริงในแท็บ{' '}
             <strong className="text-[#1F1D1A]">ส่งงานตรวจ</strong> จะช่วยให้ทั้งคะแนน TCAS และสตูดิโอ 3D เติบโตไปพร้อมกันอย่างสมดุลครับ
           </p>
+          {onGoToLibrary && (
+            <button
+              type="button"
+              onClick={() =>
+                onGoToLibrary(trackFilter === 'mixed' ? undefined : trackFilter)
+              }
+              className="w-full inline-flex items-center justify-center gap-2 px-3.5 py-2.5 rounded-xl bg-white border border-[#DED5C5] text-xs font-semibold text-[#1F1D1A] hover:bg-[#F1ECE2] transition-colors cursor-pointer"
+            >
+              <BookOpen className="w-4 h-4 text-[#9A4E24]" />
+              <span>อ่านสรุปเนื้อหาในคลังความรู้ →</span>
+            </button>
+          )}
         </div>
       </aside>
     </div>

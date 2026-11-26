@@ -842,8 +842,8 @@ export class AvatarBehaviorController {
       Boolean(target.usesSketchTool);
 
     this.rig.wateringCanGroup.visible = isWatering;
-    this.rig.sketchPencilGroup.visible = isSketching && !this.hasUserHandItem;
-    this.rig.propGroup.visible = !isWatering;
+    this.rig.sketchPencilGroup.visible = isSketching;
+    this.rig.propGroup.visible = this.hasUserHandItem;
     if (!isWatering) {
       this.rig.wateringCanGroup.rotation.x = THREE.MathUtils.damp(
         this.rig.wateringCanGroup.rotation.x,
@@ -914,19 +914,24 @@ export class AvatarBehaviorController {
         const swing = Math.sin(steppedWalk) * 0.48;
         this.rig.leftLeg.rotation.x = swing;
         this.rig.rightLeg.rotation.x = -swing;
-        this.rig.leftArm.rotation.x = -swing * 0.62;
-        this.rig.leftForearm.rotation.x = THREE.MathUtils.damp(this.rig.leftForearm.rotation.x, -0.1, 10, dt);
+        const hp = this.rig.handHoldPose;
         if (this.hasUserHandItem) {
-          this.rig.rightArm.rotation.x = -0.18 + swing * 0.16;
-          this.rig.rightArm.rotation.z = THREE.MathUtils.damp(this.rig.rightArm.rotation.z, 0.06, 10, dt);
-          this.rig.rightForearm.rotation.x = THREE.MathUtils.damp(this.rig.rightForearm.rotation.x, -1.12, 12, dt);
-          this.rig.rightForearm.rotation.z = THREE.MathUtils.damp(this.rig.rightForearm.rotation.z, -0.22, 12, dt);
+          this.rig.leftArm.rotation.x = hp.armX + swing * 0.14;
+          this.rig.leftArm.rotation.z = THREE.MathUtils.damp(this.rig.leftArm.rotation.z, hp.armZ, 10, dt);
+          this.rig.leftForearm.rotation.x = THREE.MathUtils.damp(this.rig.leftForearm.rotation.x, hp.forearmX, 12, dt);
+          this.rig.leftForearm.rotation.y = THREE.MathUtils.damp(this.rig.leftForearm.rotation.y, hp.forearmY, 12, dt);
+          this.rig.leftForearm.rotation.z = THREE.MathUtils.damp(this.rig.leftForearm.rotation.z, hp.forearmZ, 12, dt);
         } else {
-          this.rig.rightArm.rotation.x = swing * 0.62;
-          this.rig.rightArm.rotation.z = THREE.MathUtils.damp(this.rig.rightArm.rotation.z, 0, 10, dt);
-          this.rig.rightForearm.rotation.x = THREE.MathUtils.damp(this.rig.rightForearm.rotation.x, -0.08, 10, dt);
-          this.rig.rightForearm.rotation.z = THREE.MathUtils.damp(this.rig.rightForearm.rotation.z, 0, 10, dt);
+          this.rig.leftArm.rotation.x = -swing * 0.62;
+          this.rig.leftArm.rotation.z = THREE.MathUtils.damp(this.rig.leftArm.rotation.z, 0, 10, dt);
+          this.rig.leftForearm.rotation.x = THREE.MathUtils.damp(this.rig.leftForearm.rotation.x, -0.1, 10, dt);
+          this.rig.leftForearm.rotation.y = THREE.MathUtils.damp(this.rig.leftForearm.rotation.y, 0, 10, dt);
+          this.rig.leftForearm.rotation.z = THREE.MathUtils.damp(this.rig.leftForearm.rotation.z, 0, 10, dt);
         }
+        this.rig.rightArm.rotation.x = swing * 0.62;
+        this.rig.rightArm.rotation.z = THREE.MathUtils.damp(this.rig.rightArm.rotation.z, 0, 10, dt);
+        this.rig.rightForearm.rotation.x = THREE.MathUtils.damp(this.rig.rightForearm.rotation.x, -0.08, 10, dt);
+        this.rig.rightForearm.rotation.z = THREE.MathUtils.damp(this.rig.rightForearm.rotation.z, 0, 10, dt);
         this.rig.headGroup.rotation.x = Math.sin(steppedWalk * 2) * 0.03;
         this.rig.headGroup.rotation.y = THREE.MathUtils.damp(this.rig.headGroup.rotation.y, 0, 8, dt);
         this.rig.bodyGroup.position.y = Math.abs(Math.sin(steppedWalk)) * 0.028;
@@ -956,6 +961,7 @@ export class AvatarBehaviorController {
         this.rig.root.rotation.y += diff * Math.min(1, dt * 12);
       }
 
+      const hp = this.rig.handHoldPose;
       if (target.seatPose) {
         const { dropY, legAngle } = this.getSeatMetrics(target.seatPose);
         this.rig.leftLeg.rotation.x = THREE.MathUtils.damp(this.rig.leftLeg.rotation.x, legAngle, 14, dt);
@@ -963,21 +969,27 @@ export class AvatarBehaviorController {
         const cosLift = Math.max(0, 1 - Math.cos(this.rig.leftLeg.rotation.x));
         const safeDropY = dropY < 0 ? Math.max(dropY, -0.28 * Math.pow(cosLift, 1.45)) : dropY;
         this.rig.bodyGroup.position.y = THREE.MathUtils.damp(this.rig.bodyGroup.position.y, safeDropY, 16, dt);
-        this.rig.leftArm.rotation.x = THREE.MathUtils.damp(this.rig.leftArm.rotation.x, -0.25, 10, dt);
-        this.rig.leftForearm.rotation.x = THREE.MathUtils.damp(this.rig.leftForearm.rotation.x, -0.18, 10, dt);
-        this.rig.rightArm.rotation.x = THREE.MathUtils.damp(this.rig.rightArm.rotation.x, this.hasUserHandItem ? -0.2 : -0.35, 10, dt);
-        this.rig.rightForearm.rotation.x = THREE.MathUtils.damp(this.rig.rightForearm.rotation.x, this.hasUserHandItem ? -1.08 : -0.22, 10, dt);
-        this.rig.rightForearm.rotation.z = THREE.MathUtils.damp(this.rig.rightForearm.rotation.z, this.hasUserHandItem ? -0.2 : 0, 10, dt);
+        this.rig.leftArm.rotation.x = THREE.MathUtils.damp(this.rig.leftArm.rotation.x, this.hasUserHandItem ? hp.armX : -0.25, 10, dt);
+        this.rig.leftArm.rotation.z = THREE.MathUtils.damp(this.rig.leftArm.rotation.z, this.hasUserHandItem ? hp.armZ : 0, 10, dt);
+        this.rig.leftForearm.rotation.x = THREE.MathUtils.damp(this.rig.leftForearm.rotation.x, this.hasUserHandItem ? hp.forearmX : -0.18, 10, dt);
+        this.rig.leftForearm.rotation.y = THREE.MathUtils.damp(this.rig.leftForearm.rotation.y, this.hasUserHandItem ? hp.forearmY : 0, 10, dt);
+        this.rig.leftForearm.rotation.z = THREE.MathUtils.damp(this.rig.leftForearm.rotation.z, this.hasUserHandItem ? hp.forearmZ : 0, 10, dt);
+        this.rig.rightArm.rotation.x = THREE.MathUtils.damp(this.rig.rightArm.rotation.x, -0.35, 10, dt);
+        this.rig.rightForearm.rotation.x = THREE.MathUtils.damp(this.rig.rightForearm.rotation.x, -0.22, 10, dt);
+        this.rig.rightForearm.rotation.z = THREE.MathUtils.damp(this.rig.rightForearm.rotation.z, 0, 10, dt);
       } else {
         const stride = Math.sin(p * Math.PI * 2) * 0.36;
         this.rig.leftLeg.rotation.x = stride;
         this.rig.rightLeg.rotation.x = -stride;
         this.rig.bodyGroup.position.y = Math.abs(Math.sin(p * Math.PI * 2)) * 0.022;
-        this.rig.leftArm.rotation.x = -stride * 0.5;
-        this.rig.leftForearm.rotation.x = THREE.MathUtils.damp(this.rig.leftForearm.rotation.x, -0.1, 10, dt);
-        this.rig.rightArm.rotation.x = this.hasUserHandItem ? -0.18 : stride * 0.5;
-        this.rig.rightForearm.rotation.x = THREE.MathUtils.damp(this.rig.rightForearm.rotation.x, this.hasUserHandItem ? -1.12 : -0.1, 10, dt);
-        this.rig.rightForearm.rotation.z = THREE.MathUtils.damp(this.rig.rightForearm.rotation.z, this.hasUserHandItem ? -0.22 : 0, 10, dt);
+        this.rig.leftArm.rotation.x = this.hasUserHandItem ? hp.armX : -stride * 0.5;
+        this.rig.leftArm.rotation.z = THREE.MathUtils.damp(this.rig.leftArm.rotation.z, this.hasUserHandItem ? hp.armZ : 0, 10, dt);
+        this.rig.leftForearm.rotation.x = THREE.MathUtils.damp(this.rig.leftForearm.rotation.x, this.hasUserHandItem ? hp.forearmX : -0.1, 10, dt);
+        this.rig.leftForearm.rotation.y = THREE.MathUtils.damp(this.rig.leftForearm.rotation.y, this.hasUserHandItem ? hp.forearmY : 0, 10, dt);
+        this.rig.leftForearm.rotation.z = THREE.MathUtils.damp(this.rig.leftForearm.rotation.z, this.hasUserHandItem ? hp.forearmZ : 0, 10, dt);
+        this.rig.rightArm.rotation.x = stride * 0.5;
+        this.rig.rightForearm.rotation.x = THREE.MathUtils.damp(this.rig.rightForearm.rotation.x, -0.1, 10, dt);
+        this.rig.rightForearm.rotation.z = THREE.MathUtils.damp(this.rig.rightForearm.rotation.z, 0, 10, dt);
       }
 
       if (p >= 1) {
@@ -999,6 +1011,7 @@ export class AvatarBehaviorController {
       this.rig.root.position.x = THREE.MathUtils.lerp(target.actionWorld.x, sx, ease);
       this.rig.root.position.z = THREE.MathUtils.lerp(target.actionWorld.z, sz, ease);
 
+      const hp = this.rig.handHoldPose;
       if (target.seatPose) {
         const { dropY } = this.getSeatMetrics(target.seatPose);
         this.rig.leftLeg.rotation.x = THREE.MathUtils.damp(this.rig.leftLeg.rotation.x, 0, 10, dt);
@@ -1007,24 +1020,30 @@ export class AvatarBehaviorController {
         const safeExitY = dropY < 0 ? Math.max(dropY, -0.28 * Math.pow(cosLift, 1.45)) : 0;
         this.rig.bodyGroup.position.y = THREE.MathUtils.damp(this.rig.bodyGroup.position.y, safeExitY, 22, dt);
         this.rig.bodyGroup.rotation.x = THREE.MathUtils.damp(this.rig.bodyGroup.rotation.x, 0, 12, dt);
-        this.rig.leftArm.rotation.x = THREE.MathUtils.damp(this.rig.leftArm.rotation.x, 0, 12, dt);
-        this.rig.leftForearm.rotation.x = THREE.MathUtils.damp(this.rig.leftForearm.rotation.x, -0.08, 12, dt);
-        this.rig.rightArm.rotation.x = THREE.MathUtils.damp(this.rig.rightArm.rotation.x, this.hasUserHandItem ? -0.18 : 0, 12, dt);
-        this.rig.rightArm.rotation.z = THREE.MathUtils.damp(this.rig.rightArm.rotation.z, this.hasUserHandItem ? 0.06 : 0, 12, dt);
-        this.rig.rightForearm.rotation.x = THREE.MathUtils.damp(this.rig.rightForearm.rotation.x, this.hasUserHandItem ? -1.12 : -0.08, 12, dt);
-        this.rig.rightForearm.rotation.z = THREE.MathUtils.damp(this.rig.rightForearm.rotation.z, this.hasUserHandItem ? -0.22 : 0, 12, dt);
+        this.rig.leftArm.rotation.x = THREE.MathUtils.damp(this.rig.leftArm.rotation.x, this.hasUserHandItem ? hp.armX : 0, 12, dt);
+        this.rig.leftArm.rotation.z = THREE.MathUtils.damp(this.rig.leftArm.rotation.z, this.hasUserHandItem ? hp.armZ : 0, 12, dt);
+        this.rig.leftForearm.rotation.x = THREE.MathUtils.damp(this.rig.leftForearm.rotation.x, this.hasUserHandItem ? hp.forearmX : -0.08, 12, dt);
+        this.rig.leftForearm.rotation.y = THREE.MathUtils.damp(this.rig.leftForearm.rotation.y, this.hasUserHandItem ? hp.forearmY : 0, 12, dt);
+        this.rig.leftForearm.rotation.z = THREE.MathUtils.damp(this.rig.leftForearm.rotation.z, this.hasUserHandItem ? hp.forearmZ : 0, 12, dt);
+        this.rig.rightArm.rotation.x = THREE.MathUtils.damp(this.rig.rightArm.rotation.x, 0, 12, dt);
+        this.rig.rightArm.rotation.z = THREE.MathUtils.damp(this.rig.rightArm.rotation.z, 0, 12, dt);
+        this.rig.rightForearm.rotation.x = THREE.MathUtils.damp(this.rig.rightForearm.rotation.x, -0.08, 12, dt);
+        this.rig.rightForearm.rotation.z = THREE.MathUtils.damp(this.rig.rightForearm.rotation.z, 0, 12, dt);
       } else {
         const stride = Math.sin(p * Math.PI * 2) * 0.34;
         this.rig.leftLeg.rotation.x = stride;
         this.rig.rightLeg.rotation.x = -stride;
         this.rig.bodyGroup.position.y = Math.abs(Math.sin(p * Math.PI * 2)) * 0.02;
         this.rig.bodyGroup.rotation.x = THREE.MathUtils.damp(this.rig.bodyGroup.rotation.x, 0, 12, dt);
-        this.rig.leftArm.rotation.x = -stride * 0.5;
-        this.rig.leftForearm.rotation.x = THREE.MathUtils.damp(this.rig.leftForearm.rotation.x, -0.08, 12, dt);
-        this.rig.rightArm.rotation.x = this.hasUserHandItem ? -0.18 : stride * 0.5;
-        this.rig.rightArm.rotation.z = THREE.MathUtils.damp(this.rig.rightArm.rotation.z, this.hasUserHandItem ? 0.06 : 0, 12, dt);
-        this.rig.rightForearm.rotation.x = THREE.MathUtils.damp(this.rig.rightForearm.rotation.x, this.hasUserHandItem ? -1.12 : -0.08, 12, dt);
-        this.rig.rightForearm.rotation.z = THREE.MathUtils.damp(this.rig.rightForearm.rotation.z, this.hasUserHandItem ? -0.22 : 0, 12, dt);
+        this.rig.leftArm.rotation.x = this.hasUserHandItem ? hp.armX : -stride * 0.5;
+        this.rig.leftArm.rotation.z = THREE.MathUtils.damp(this.rig.leftArm.rotation.z, this.hasUserHandItem ? hp.armZ : 0, 12, dt);
+        this.rig.leftForearm.rotation.x = THREE.MathUtils.damp(this.rig.leftForearm.rotation.x, this.hasUserHandItem ? hp.forearmX : -0.08, 12, dt);
+        this.rig.leftForearm.rotation.y = THREE.MathUtils.damp(this.rig.leftForearm.rotation.y, this.hasUserHandItem ? hp.forearmY : 0, 12, dt);
+        this.rig.leftForearm.rotation.z = THREE.MathUtils.damp(this.rig.leftForearm.rotation.z, this.hasUserHandItem ? hp.forearmZ : 0, 12, dt);
+        this.rig.rightArm.rotation.x = stride * 0.5;
+        this.rig.rightArm.rotation.z = THREE.MathUtils.damp(this.rig.rightArm.rotation.z, 0, 12, dt);
+        this.rig.rightForearm.rotation.x = THREE.MathUtils.damp(this.rig.rightForearm.rotation.x, -0.08, 12, dt);
+        this.rig.rightForearm.rotation.z = THREE.MathUtils.damp(this.rig.rightForearm.rotation.z, 0, 12, dt);
       }
 
       if (p >= 1) {
@@ -1053,6 +1072,40 @@ export class AvatarBehaviorController {
 
     // Subtle stop-motion pose quantization (~14 fps)
     const t = Math.floor(this.actionElapsed * 14) / 14;
+    const hp = this.rig.handHoldPose;
+
+    const dampLeftHandPose = (fallbackArmX: number, fallbackForearmX: number) => {
+      this.rig.leftArm.rotation.x = THREE.MathUtils.damp(
+        this.rig.leftArm.rotation.x,
+        this.hasUserHandItem ? hp.armX + Math.sin(t * 1.6) * 0.04 : fallbackArmX,
+        8,
+        dt
+      );
+      this.rig.leftArm.rotation.z = THREE.MathUtils.damp(
+        this.rig.leftArm.rotation.z,
+        this.hasUserHandItem ? hp.armZ : 0,
+        8,
+        dt
+      );
+      this.rig.leftForearm.rotation.x = THREE.MathUtils.damp(
+        this.rig.leftForearm.rotation.x,
+        this.hasUserHandItem ? hp.forearmX + Math.sin(t * 1.6) * 0.04 : fallbackForearmX,
+        8,
+        dt
+      );
+      this.rig.leftForearm.rotation.y = THREE.MathUtils.damp(
+        this.rig.leftForearm.rotation.y,
+        this.hasUserHandItem ? hp.forearmY : 0,
+        8,
+        dt
+      );
+      this.rig.leftForearm.rotation.z = THREE.MathUtils.damp(
+        this.rig.leftForearm.rotation.z,
+        this.hasUserHandItem ? hp.forearmZ : 0,
+        8,
+        dt
+      );
+    };
 
     if (target.seatPose) {
       const { dropY, legAngle } = this.getSeatMetrics(target.seatPose);
@@ -1076,18 +1129,21 @@ export class AvatarBehaviorController {
         this.rig.rightArm.rotation.z = Math.cos(t * 6.2) * 0.12;
         this.rig.rightForearm.rotation.x = THREE.MathUtils.damp(this.rig.rightForearm.rotation.x, -0.56, 10, dt);
         this.rig.rightForearm.rotation.z = THREE.MathUtils.damp(this.rig.rightForearm.rotation.z, -0.12, 10, dt);
-        this.rig.leftArm.rotation.x = THREE.MathUtils.damp(this.rig.leftArm.rotation.x, -0.38, 8, dt);
-        this.rig.leftForearm.rotation.x = THREE.MathUtils.damp(this.rig.leftForearm.rotation.x, -0.35, 8, dt);
+        dampLeftHandPose(-0.32, -0.3);
         this.rig.headGroup.rotation.x = 0.16 + Math.sin(t * 2.2) * 0.04;
         this.rig.headGroup.rotation.y = Math.sin(t * 1.4) * 0.08;
       } else {
         this.rig.bodyGroup.rotation.x = THREE.MathUtils.damp(this.rig.bodyGroup.rotation.x, -0.08, 8, dt);
-        this.rig.leftArm.rotation.x = THREE.MathUtils.damp(this.rig.leftArm.rotation.x, -0.24, 8, dt);
-        this.rig.leftForearm.rotation.x = THREE.MathUtils.damp(this.rig.leftForearm.rotation.x, -0.22, 8, dt);
-        this.rig.rightArm.rotation.x = THREE.MathUtils.damp(this.rig.rightArm.rotation.x, this.hasUserHandItem ? -0.18 : -0.24, 8, dt);
-        this.rig.rightArm.rotation.z = THREE.MathUtils.damp(this.rig.rightArm.rotation.z, this.hasUserHandItem ? 0.06 : 0, 8, dt);
-        this.rig.rightForearm.rotation.x = THREE.MathUtils.damp(this.rig.rightForearm.rotation.x, this.hasUserHandItem ? -1.12 : -0.22, 8, dt);
-        this.rig.rightForearm.rotation.z = THREE.MathUtils.damp(this.rig.rightForearm.rotation.z, this.hasUserHandItem ? -0.22 : 0, 8, dt);
+        dampLeftHandPose(-0.2, -0.18);
+        this.rig.rightArm.rotation.x = THREE.MathUtils.damp(
+          this.rig.rightArm.rotation.x,
+          -0.34 + Math.sin(t * 1.6) * 0.06,
+          8,
+          dt
+        );
+        this.rig.rightArm.rotation.z = THREE.MathUtils.damp(this.rig.rightArm.rotation.z, -0.06, 8, dt);
+        this.rig.rightForearm.rotation.x = THREE.MathUtils.damp(this.rig.rightForearm.rotation.x, -0.42, 8, dt);
+        this.rig.rightForearm.rotation.z = THREE.MathUtils.damp(this.rig.rightForearm.rotation.z, -0.1, 8, dt);
         this.rig.headGroup.rotation.y = Math.sin(t * 1.2) * 0.18;
         this.rig.headGroup.rotation.x = Math.sin(t * 1.8) * 0.04;
       }
@@ -1096,17 +1152,11 @@ export class AvatarBehaviorController {
       this.rig.bodyGroup.rotation.x = THREE.MathUtils.damp(this.rig.bodyGroup.rotation.x, 0.08, 8, dt);
       this.rig.leftLeg.rotation.x = THREE.MathUtils.damp(this.rig.leftLeg.rotation.x, 0, 10, dt);
       this.rig.rightLeg.rotation.x = THREE.MathUtils.damp(this.rig.rightLeg.rotation.x, 0, 10, dt);
-      this.rig.leftArm.rotation.x = THREE.MathUtils.damp(
-        this.rig.leftArm.rotation.x,
-        target.type === 'work_craft' ? -0.44 + Math.sin(t * 3.8) * 0.08 : -0.18,
-        8,
-        dt
-      );
-      this.rig.leftForearm.rotation.x = THREE.MathUtils.damp(this.rig.leftForearm.rotation.x, -0.35, 8, dt);
-      this.rig.rightArm.rotation.x = -0.62 + Math.sin(t * 5.2) * 0.16;
+      dampLeftHandPose(target.type === 'work_craft' ? -0.34 + Math.sin(t * 3.8) * 0.06 : -0.14, -0.26);
+      this.rig.rightArm.rotation.x = -0.66 + Math.sin(t * 5.2) * 0.18;
       this.rig.rightArm.rotation.z = Math.sin(t * 3.4) * 0.14;
-      this.rig.rightForearm.rotation.x = THREE.MathUtils.damp(this.rig.rightForearm.rotation.x, -0.68, 10, dt);
-      this.rig.rightForearm.rotation.z = THREE.MathUtils.damp(this.rig.rightForearm.rotation.z, -0.12, 10, dt);
+      this.rig.rightForearm.rotation.x = THREE.MathUtils.damp(this.rig.rightForearm.rotation.x, -0.72, 10, dt);
+      this.rig.rightForearm.rotation.z = THREE.MathUtils.damp(this.rig.rightForearm.rotation.z, -0.14, 10, dt);
       this.rig.headGroup.rotation.y = Math.sin(t * 1.5) * 0.1;
       this.rig.headGroup.rotation.x = 0.06 + Math.sin(t * 2.1) * 0.05;
     } else if (target.type === 'water_plant') {
@@ -1114,8 +1164,7 @@ export class AvatarBehaviorController {
       this.rig.bodyGroup.rotation.x = THREE.MathUtils.damp(this.rig.bodyGroup.rotation.x, 0.14, 8, dt);
       this.rig.leftLeg.rotation.x = THREE.MathUtils.damp(this.rig.leftLeg.rotation.x, 0, 10, dt);
       this.rig.rightLeg.rotation.x = THREE.MathUtils.damp(this.rig.rightLeg.rotation.x, 0, 10, dt);
-      this.rig.leftArm.rotation.x = THREE.MathUtils.damp(this.rig.leftArm.rotation.x, 0.14, 8, dt);
-      this.rig.leftForearm.rotation.x = THREE.MathUtils.damp(this.rig.leftForearm.rotation.x, -0.1, 8, dt);
+      dampLeftHandPose(0.14, -0.1);
       this.rig.rightArm.rotation.x = -0.58 + Math.sin(t * 3.4) * 0.08;
       this.rig.rightArm.rotation.z = -0.06;
       this.rig.rightForearm.rotation.x = THREE.MathUtils.damp(this.rig.rightForearm.rotation.x, -0.5, 10, dt);
@@ -1128,15 +1177,14 @@ export class AvatarBehaviorController {
       this.rig.bodyGroup.rotation.x = THREE.MathUtils.damp(this.rig.bodyGroup.rotation.x, 0.06, 8, dt);
       this.rig.leftLeg.rotation.x = THREE.MathUtils.damp(this.rig.leftLeg.rotation.x, 0, 10, dt);
       this.rig.rightLeg.rotation.x = THREE.MathUtils.damp(this.rig.rightLeg.rotation.x, 0, 10, dt);
-      this.rig.leftArm.rotation.x = THREE.MathUtils.damp(this.rig.leftArm.rotation.x, 0, 8, dt);
-      this.rig.leftForearm.rotation.x = THREE.MathUtils.damp(this.rig.leftForearm.rotation.x, -0.08, 8, dt);
+      dampLeftHandPose(0, -0.08);
       // Reach right hand forward close to the drawer/lamp switch around t = 1.2s
       const reachWave = Math.sin(Math.min(Math.PI, (this.actionElapsed / target.duration) * Math.PI));
       this.rig.rightArm.rotation.x = -0.68 * reachWave;
       this.rig.rightArm.rotation.z = 0;
       this.rig.rightForearm.rotation.x = THREE.MathUtils.damp(
         this.rig.rightForearm.rotation.x,
-        this.hasUserHandItem ? -0.92 - 0.14 * reachWave : -0.44 * reachWave,
+        -0.44 * reachWave,
         10,
         dt
       );
@@ -1160,53 +1208,47 @@ export class AvatarBehaviorController {
       this.rig.bodyGroup.rotation.x = THREE.MathUtils.damp(this.rig.bodyGroup.rotation.x, 0.2, 8, dt);
       this.rig.leftLeg.rotation.x = THREE.MathUtils.damp(this.rig.leftLeg.rotation.x, -0.2, 10, dt);
       this.rig.rightLeg.rotation.x = THREE.MathUtils.damp(this.rig.rightLeg.rotation.x, -0.2, 10, dt);
-      this.rig.leftArm.rotation.x = -0.52 + Math.sin(t * 6.0) * 0.22;
-      this.rig.leftForearm.rotation.x = THREE.MathUtils.damp(this.rig.leftForearm.rotation.x, -0.32, 10, dt);
-      this.rig.rightArm.rotation.x = this.hasUserHandItem ? -0.25 : -0.52 - Math.sin(t * 6.0) * 0.22;
-      this.rig.rightForearm.rotation.x = THREE.MathUtils.damp(
-        this.rig.rightForearm.rotation.x,
-        this.hasUserHandItem ? -1.08 : -0.32,
-        10,
-        dt
-      );
+      // Right hand always leads petting / playing with pets; left hand holds prop or rests gently
+      dampLeftHandPose(-0.24, -0.2);
+      this.rig.rightArm.rotation.x = -0.6 - Math.sin(t * 6.0) * 0.22;
+      this.rig.rightArm.rotation.z = THREE.MathUtils.damp(this.rig.rightArm.rotation.z, -0.1, 10, dt);
+      this.rig.rightForearm.rotation.x = THREE.MathUtils.damp(this.rig.rightForearm.rotation.x, -0.44, 10, dt);
       this.rig.headGroup.rotation.x = 0.2;
       this.rig.headGroup.rotation.z = Math.sin(t * 3.0) * 0.12;
     } else {
-      // look_window, admire_frame, browse_books, stroll
+      // look_window, admire_frame, browse_books, stroll — right hand leads interactive gestures, left hand holds prop
       this.rig.bodyGroup.position.y = Math.sin(t * 2.4) * 0.014;
       this.rig.bodyGroup.rotation.x = THREE.MathUtils.damp(this.rig.bodyGroup.rotation.x, 0, 8, dt);
       this.rig.leftLeg.rotation.x = THREE.MathUtils.damp(this.rig.leftLeg.rotation.x, 0, 10, dt);
       this.rig.rightLeg.rotation.x = THREE.MathUtils.damp(this.rig.rightLeg.rotation.x, 0, 10, dt);
-      this.rig.leftArm.rotation.x = THREE.MathUtils.damp(this.rig.leftArm.rotation.x, -0.14, 8, dt);
-      this.rig.leftForearm.rotation.x = THREE.MathUtils.damp(this.rig.leftForearm.rotation.x, -0.1, 8, dt);
+      dampLeftHandPose(-0.08, -0.08);
       this.rig.rightArm.rotation.x = THREE.MathUtils.damp(
         this.rig.rightArm.rotation.x,
-        this.hasUserHandItem
-          ? -0.18 + Math.sin(t * 1.8) * 0.04
-          : target.type === 'browse_books'
-            ? -0.32 + Math.sin(t * 2.5) * 0.08
-            : 0,
+        target.type === 'browse_books'
+          ? -0.46 + Math.sin(t * 2.8) * 0.1
+          : target.type === 'admire_frame' || target.type === 'look_window'
+            ? -0.26 + Math.sin(t * 1.5) * 0.05
+            : -0.06,
         8,
         dt
       );
       this.rig.rightArm.rotation.z = THREE.MathUtils.damp(
         this.rig.rightArm.rotation.z,
-        this.hasUserHandItem ? 0.06 : 0,
+        target.type === 'browse_books' ? -0.08 : 0,
         8,
         dt
       );
       this.rig.rightForearm.rotation.x = THREE.MathUtils.damp(
         this.rig.rightForearm.rotation.x,
-        this.hasUserHandItem ? -1.12 : target.type === 'browse_books' ? -0.3 : -0.08,
+        target.type === 'browse_books'
+          ? -0.48
+          : target.type === 'admire_frame'
+            ? -0.34
+            : -0.12,
         8,
         dt
       );
-      this.rig.rightForearm.rotation.z = THREE.MathUtils.damp(
-        this.rig.rightForearm.rotation.z,
-        this.hasUserHandItem ? -0.22 : 0,
-        8,
-        dt
-      );
+      this.rig.rightForearm.rotation.z = THREE.MathUtils.damp(this.rig.rightForearm.rotation.z, -0.06, 8, dt);
       this.rig.headGroup.rotation.z = THREE.MathUtils.damp(this.rig.headGroup.rotation.z, 0, 8, dt);
       this.rig.headGroup.rotation.y = Math.sin(t * 1.35) * 0.22;
       this.rig.headGroup.rotation.x =
@@ -1217,7 +1259,8 @@ export class AvatarBehaviorController {
 
     if (this.actionElapsed >= target.duration) {
       this.rig.headGroup.rotation.z = 0;
-      this.rig.rightArm.rotation.z = this.hasUserHandItem ? 0.06 : 0;
+      this.rig.rightArm.rotation.z = 0;
+      this.rig.leftArm.rotation.z = this.hasUserHandItem ? hp.armZ : 0;
       if (target.actionWorld) {
         this.phase = 'exiting';
         this.transitionElapsed = 0;

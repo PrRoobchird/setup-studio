@@ -19,6 +19,8 @@ import {
   HAIR_STYLES,
   MOUTH_STYLES,
   SKIN_TONES,
+  getHolidayEventStatus,
+  isAvatarItemAllowedForGender,
 } from '../data/catalog';
 import { AvatarConfig, AvatarSlot } from '../types/studio';
 import { AvatarPreview3D } from './AvatarPreview3D';
@@ -57,10 +59,20 @@ export const AvatarWardrobeModal: React.FC<AvatarWardrobeModalProps> = ({
   const currentMouth = avatar.mouthStyleId ?? 'smile';
   const currentBlush = avatar.blushStyleId ?? 'rosy';
 
+  const holidayStatus = getHolidayEventStatus();
+
   const slotItems =
     activeTab === 'face' || activeTab === 'hair'
       ? []
-      : AVATAR_SHOP_ITEMS.filter((item) => item.slot === activeTab);
+      : AVATAR_SHOP_ITEMS.filter((item) => {
+          if (item.slot !== activeTab) return false;
+          const isOwned = item.price === 0 || ownedAvatarItems.includes(item.id);
+          if (item.isSeasonal && !holidayStatus.isActive && !isOwned) return false;
+          if (activeTab === 'outfit' && !isAvatarItemAllowedForGender(item, avatar.gender)) {
+            return false;
+          }
+          return true;
+        });
 
   const getActiveIdForSlot = (slot: AvatarSlot): string => {
     switch (slot) {
@@ -382,6 +394,15 @@ export const AvatarWardrobeModal: React.FC<AvatarWardrobeModalProps> = ({
             {/* Slot Items (Owned vs Locked) */}
             {activeTab !== 'face' && activeTab !== 'hair' && (
               <div className="space-y-3">
+                {activeTab === 'outfit' && (
+                  <div className="text-[11px] text-[#6E675F] bg-[#FAF8F4] border border-[#EAE3D5] rounded-xl px-3 py-2">
+                    กำลังแสดงชุดสำหรับ{' '}
+                    <strong className="text-[#1F1D1A]">
+                      {(avatar.gender ?? 'female') === 'male' ? 'ผู้ชาย' : 'ผู้หญิง'} และชุดยูนิเซ็กซ์
+                    </strong>{' '}
+                    ({slotItems.length} ชุด)
+                  </div>
+                )}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   {slotItems.map((item) => {
                     const isOwned = item.price === 0 || ownedAvatarItems.includes(item.id);

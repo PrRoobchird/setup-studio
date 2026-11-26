@@ -1,5 +1,6 @@
 import {
   AvatarConfig,
+  AvatarGender,
   AvatarItemDef,
   BlushStyleId,
   DoorTheme,
@@ -95,9 +96,9 @@ export function getHolidayEventStatus(now = new Date()): {
   daysLeft: number;
   deadlineLabel: string;
 } {
-  const month = now.getMonth(); // 0..11 (10 = Nov, 11 = Dec)
+  const month = now.getMonth(); // 0..11 (11 = Dec)
   const day = now.getDate();
-  const isActive = month === 10 || (month === 11 && day <= 31);
+  const isActive = month === 11 && day >= 1 && day <= 31;
   const isSnowActive = isDecemberSnowSeason(now);
   const year = now.getFullYear();
   const end = new Date(year, 11, 31, 23, 59, 59);
@@ -108,8 +109,20 @@ export function getHolidayEventStatus(now = new Date()): {
     isActive,
     isSnowActive,
     daysLeft,
-    deadlineLabel: 'เปิดขายวันนี้ – 31 ธันวาคมนี้เท่านั้น',
+    deadlineLabel: isActive
+      ? 'เปิดขายวันนี้ – 31 ธันวาคมนี้เท่านั้น'
+      : 'เปิดขายวันที่ 1 – 31 ธันวาคมเท่านั้น',
   };
+}
+
+export function isAvatarItemAllowedForGender(
+  item: Pick<AvatarItemDef, 'slot' | 'allowedGender'>,
+  gender?: AvatarGender
+): boolean {
+  if (item.slot !== 'outfit') return true;
+  const allowed = item.allowedGender ?? 'unisex';
+  if (allowed === 'unisex') return true;
+  return allowed === (gender ?? 'male');
 }
 
 export const MAJOR_TRACKS: MajorTrack[] = [
@@ -184,7 +197,7 @@ export const BLUSH_STYLES: { id: BlushStyleId; name: string; hex: string }[] = [
 ];
 
 export const AVATAR_SHOP_ITEMS: AvatarItemDef[] = [
-  // ชุดแต่งตัว (Outfits)
+  // ชุดแต่งตัว (Outfits) — 13 ลุคชาย & 13 ลุคหญิง สมดุลเท่ากัน
   {
     id: 'outfit_clay_overalls',
     slot: 'outfit',
@@ -195,17 +208,7 @@ export const AVATAR_SHOP_ITEMS: AvatarItemDef[] = [
     description: 'เสื้อแขนยาวลายขวางดินเผาแดง-ครีมคู่เอี๊ยมยีนส์กระดุมทองแดง สไตล์หุ่นดินเผาปั้นมือ',
     primaryHex: '#4E6E96',
     secondaryHex: '#F5ECE0',
-  },
-  {
-    id: 'outfit_bjd_ribbon_dress',
-    slot: 'outfit',
-    slotLabel: 'ชุดแต่งตัว',
-    name: 'เดรสเลเยอร์ผูกโบว์ & รองเท้าแมรี่เจน',
-    price: 0,
-    fameBonus: 0,
-    description: 'เดรสลูกไม้หลายชั้นแต่งโบว์ซาตินคู่กับถุงเท้ายาวและรองเท้า Mary Jane',
-    primaryHex: '#F4C2C9',
-    secondaryHex: '#FFF8F2',
+    allowedGender: 'unisex',
   },
   {
     id: 'outfit_starter_tank',
@@ -217,6 +220,31 @@ export const AVATAR_SHOP_ITEMS: AvatarItemDef[] = [
     description: 'ชุดเสื้อกล้ามสีขาวและกางเกงขาสั้นลำลอง สำหรับเปลี่ยนลุคสบายๆ ในสตูดิโอ',
     primaryHex: '#F8FAFC',
     secondaryHex: '#4A668C',
+    allowedGender: 'unisex',
+  },
+  {
+    id: 'outfit_bjd_ribbon_dress',
+    slot: 'outfit',
+    slotLabel: 'ชุดแต่งตัว · หญิง',
+    name: 'เดรสเลเยอร์ผูกโบว์ & รองเท้าแมรี่เจน',
+    price: 0,
+    fameBonus: 0,
+    description: 'เดรสลูกไม้หลายชั้นแต่งโบว์ซาตินคู่กับถุงเท้ายาวและรองเท้า Mary Jane',
+    primaryHex: '#F4C2C9',
+    secondaryHex: '#FFF8F2',
+    allowedGender: 'female',
+  },
+  {
+    id: 'outfit_starter_polo',
+    slot: 'outfit',
+    slotLabel: 'ชุดแต่งตัว · ชาย',
+    name: 'โปโลคอปกนักศึกษา & สแล็คขาสั้น',
+    price: 0,
+    fameBonus: 0,
+    description: 'เสื้อโปโลผ้าฝ้ายคอปกกรมท่าจับคู่กางเกงขาสั้นสีครีมกากีและสนีกเกอร์คลีนๆ',
+    primaryHex: '#334E73',
+    secondaryHex: '#E9DFCF',
+    allowedGender: 'male',
   },
   {
     id: 'outfit_hoodie_apron',
@@ -228,6 +256,7 @@ export const AVATAR_SHOP_ITEMS: AvatarItemDef[] = [
     description: 'ชุดเด็กติว Born to be Art สุดคลาสสิก ใส่คล่องตัวทั้งวาดเส้นและลงสี',
     primaryHex: '#7FA3C7',
     secondaryHex: '#EFE4D2',
+    allowedGender: 'unisex',
   },
   {
     id: 'outfit_overalls',
@@ -239,52 +268,105 @@ export const AVATAR_SHOP_ITEMS: AvatarItemDef[] = [
     description: 'ชุดเอี๊ยมยีนส์ทับเสื้อยืดสีมัสตาร์ด พร้อมกระเป๋าหน้าไว้เสียบดินสอ',
     primaryHex: '#4E6E9A',
     secondaryHex: '#EAB348',
+    allowedGender: 'unisex',
   },
   {
     id: 'outfit_cardigan',
     slot: 'outfit',
-    slotLabel: 'ชุดแต่งตัว',
+    slotLabel: 'ชุดแต่งตัว · หญิง',
     name: 'คาร์ดิแกนไหมพรมเกาหลี',
     price: 300,
     fameBonus: 2,
-    description: 'เสื้อคลุมไหมพรมสีครีมนมจับคู่กระโปรงโทนละมุนสไตล์สตูดิโอโซล',
+    description: 'เสื้อคลุมไหมพรมสีครีมนมจับคู่กระโปรงจีบโทนละมุนสไตล์สตูดิโอโซล',
     primaryHex: '#F3DFCC',
     secondaryHex: '#9D7B67',
+    allowedGender: 'female',
   },
   {
     id: 'outfit_pastel_atelier',
     slot: 'outfit',
-    slotLabel: 'ชุดแต่งตัว',
-    name: 'ชุดเอี๊ยมผ้าลินินสีมัทฉะ',
+    slotLabel: 'ชุดแต่งตัว · หญิง',
+    name: 'เดรสเอี๊ยมผ้าลินินสีมัทฉะ',
     price: 340,
     fameBonus: 2,
-    description: 'ชุดลินินโทนเขียวเซจสบายตา เหมาะกับสายมัณฑนศิลป์และแฟชั่น',
+    description: 'เดรสกระโปรงเอี๊ยมผ้าลินินโทนเขียวเซจสวมทับเสื้อแขนพองสีครีม เหมาะกับสายมัณฑนศิลป์',
     primaryHex: '#7CA88A',
     secondaryHex: '#FFF8F0',
+    allowedGender: 'female',
+  },
+  {
+    id: 'outfit_french_blouse',
+    slot: 'outfit',
+    slotLabel: 'ชุดแต่งตัว · หญิง',
+    name: 'เบลาส์คอปกโบว์ & กระโปรงเบอร์กันดี',
+    price: 390,
+    fameBonus: 3,
+    description: 'เสื้อเบลาส์ปารีเซียงแขนตุ๊กตาผูกโบว์ จับคู่กระโปรงทรงเอสีเบอร์กันดีสุดชิค',
+    primaryHex: '#8E354A',
+    secondaryHex: '#FFF7F0',
+    allowedGender: 'female',
+  },
+  {
+    id: 'outfit_fem_trench',
+    slot: 'outfit',
+    slotLabel: 'ชุดแต่งตัว · หญิง',
+    name: 'เทรนช์โค้ทแฟชั่นหญิง & กระโปรงพลีท',
+    price: 480,
+    fameBonus: 3,
+    description: 'โค้ทผ้ากาบาร์ดีนสีเบจคาดเข็มขัด คู่กระโปรงพลีทและรองเท้าบูทสั้นสายแฟชั่น',
+    primaryHex: '#D8BC98',
+    secondaryHex: '#4A3B36',
+    allowedGender: 'female',
+  },
+  {
+    id: 'outfit_street_cargo',
+    slot: 'outfit',
+    slotLabel: 'ชุดแต่งตัว · ชาย',
+    name: 'โอเวอร์เชิ้ตอาร์ตติสต์ & กางเกงคาร์โก้',
+    price: 360,
+    fameBonus: 2,
+    description: 'แจ็กเก็ตเชิ้ตผ้าแคนวาสสีโอลีฟทับเสื้อยืดขาว จับคู่กางเกงคาร์โก้กระเป๋าข้างสุดลุย',
+    primaryHex: '#5F7458',
+    secondaryHex: '#F7F2E8',
+    allowedGender: 'male',
   },
   {
     id: 'outfit_varsity',
     slot: 'outfit',
-    slotLabel: 'ชุดแต่งตัว',
+    slotLabel: 'ชุดแต่งตัว · ชาย',
     name: 'แจ็กเก็ตเด็กนิเทศศิลป์',
     price: 420,
     fameBonus: 3,
     description: 'แจ็กเก็ตทูโทนแดงอิฐ-ครีม สตรีทลุคสุดเท่สำหรับสายกราฟิกดีไซน์',
     primaryHex: '#C94E3B',
     secondaryHex: '#F4EDE2',
+    allowedGender: 'male',
+  },
+  {
+    id: 'outfit_male_trench',
+    slot: 'outfit',
+    slotLabel: 'ชุดแต่งตัว · ชาย',
+    name: 'เทรนช์โค้ทมินิมอลชาย & กางเกงสแล็ค',
+    price: 480,
+    fameBonus: 3,
+    description: 'โค้ทยาวสีคาเมลทรงเรียบเท่ทับสเวตเตอร์ดำและกางเกงสแล็คขากระบอก',
+    primaryHex: '#B68F66',
+    secondaryHex: '#2B303A',
+    allowedGender: 'male',
   },
   {
     id: 'outfit_arch_blazer',
     slot: 'outfit',
-    slotLabel: 'ชุดแต่งตัว',
+    slotLabel: 'ชุดแต่งตัว · ชาย',
     name: 'เบลเซอร์มินิมอลสายสถาปัตย์',
     price: 520,
     fameBonus: 3,
     description: 'ชุดเบลเซอร์สีเทาชาโคลแมตช์เสื้อคอเต่า ดูภูมิฐานพร้อมพรีเซนต์งานอาจารย์',
     primaryHex: '#4B525C',
     secondaryHex: '#E8E3DC',
+    allowedGender: 'male',
   },
-  // Seasonal Outfits (Christmas & New Year)
+  // Seasonal Outfits (Christmas & New Year: Dec 1 - Dec 31 only)
   {
     id: 'outfit_xmas_knit',
     slot: 'outfit',
@@ -296,7 +378,64 @@ export const AVATAR_SHOP_ITEMS: AvatarItemDef[] = [
     primaryHex: '#C83B45',
     secondaryHex: '#2F6F4E',
     isSeasonal: true,
-    eventTag: 'คริสต์มาส & ปีใหม่ · ถึง 31 ธ.ค.',
+    eventTag: 'คริสต์มาส & ปีใหม่ · 1–31 ธ.ค.',
+    allowedGender: 'unisex',
+  },
+  {
+    id: 'outfit_xmas_santa',
+    slot: 'outfit',
+    slotLabel: 'ชุดแต่งตัว · อีเว้นท์ (ชาย)',
+    name: 'ชุดซานตาคลอสคลาสสิก (ชาย)',
+    price: 480,
+    fameBonus: 3,
+    description: 'เสื้อโค้ทกำมะหยี่ซานต้าสีแดงสดแต่งขอบเฟอร์ขาว เข็มขัดหัวทอง และกางเกงเข้าชุด',
+    primaryHex: '#C82D3B',
+    secondaryHex: '#FAF7F2',
+    isSeasonal: true,
+    eventTag: 'คริสต์มาส & ปีใหม่ · 1–31 ธ.ค.',
+    allowedGender: 'male',
+  },
+  {
+    id: 'outfit_xmas_santy',
+    slot: 'outfit',
+    slotLabel: 'ชุดแต่งตัว · อีเว้นท์ (หญิง)',
+    name: 'ชุดแซนตี้เดรสกำมะหยี่ & เคปเฟอร์ (หญิง)',
+    price: 480,
+    fameBonus: 3,
+    description: 'เดรสแซนตี้กำมะหยี่สีแดงแต่งชายกระโปรงเฟอร์ขาว ปกเคปนุ่ม และเข็มขัดโบว์ทอง',
+    primaryHex: '#D13344',
+    secondaryHex: '#FFFDF9',
+    isSeasonal: true,
+    eventTag: 'คริสต์มาส & ปีใหม่ · 1–31 ธ.ค.',
+    allowedGender: 'female',
+  },
+  {
+    id: 'outfit_xmas_elf_male',
+    slot: 'outfit',
+    slotLabel: 'ชุดแต่งตัว · อีเว้นท์ (ชาย)',
+    name: 'ชุดเอลฟ์ผู้ช่วยซานต้า (ชาย)',
+    price: 440,
+    fameBonus: 3,
+    description: 'ทูนิคสีเขียวมรกตปกหยักแดงแต่งกระดิ่งทอง กางเกงขายาวและรองเท้าบูทเอลฟ์สุดคิ้วท์',
+    primaryHex: '#27784C',
+    secondaryHex: '#D13B47',
+    isSeasonal: true,
+    eventTag: 'คริสต์มาส & ปีใหม่ · 1–31 ธ.ค.',
+    allowedGender: 'male',
+  },
+  {
+    id: 'outfit_xmas_elf_female',
+    slot: 'outfit',
+    slotLabel: 'ชุดแต่งตัว · อีเว้นท์ (หญิง)',
+    name: 'ชุดเอลฟ์กระโปรงบาน & ถุงเท้าลายทาง (หญิง)',
+    price: 440,
+    fameBonus: 3,
+    description: 'เดรสเอลฟ์กระโปรงบานสีเขียวมรกตปกหยักแดงแต่งกระพรวนทอง พร้อมถุงเท้ายาวลายทางคริสต์มาส',
+    primaryHex: '#2B8254',
+    secondaryHex: '#E04856',
+    isSeasonal: true,
+    eventTag: 'คริสต์มาส & ปีใหม่ · 1–31 ธ.ค.',
+    allowedGender: 'female',
   },
   {
     id: 'outfit_ny_party',
@@ -309,7 +448,8 @@ export const AVATAR_SHOP_ITEMS: AvatarItemDef[] = [
     primaryHex: '#263859',
     secondaryHex: '#E8C067',
     isSeasonal: true,
-    eventTag: 'คริสต์มาส & ปีใหม่ · ถึง 31 ธ.ค.',
+    eventTag: 'คริสต์มาส & ปีใหม่ · 1–31 ธ.ค.',
+    allowedGender: 'unisex',
   },
 
   // หมวก & เครื่องหัว (Headwear)
@@ -558,6 +698,7 @@ export const INITIAL_OWNED_AVATAR_ITEMS: string[] = [
   'outfit_clay_overalls',
   'outfit_bjd_ribbon_dress',
   'outfit_starter_tank',
+  'outfit_starter_polo',
   'head_none',
   'glasses_none',
   'hand_none',

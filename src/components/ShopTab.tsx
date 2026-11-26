@@ -44,6 +44,7 @@ import {
   WINDOW_VIEW_THEMES,
   getHolidayEventStatus,
   getRankInfo,
+  isAvatarItemAllowedForGender,
 } from '../data/catalog';
 import {
   AvatarConfig,
@@ -156,6 +157,19 @@ export const ShopTab: React.FC<ShopTabProps> = ({
     setFilter(initialFilter);
   }, [initialFilter]);
 
+  useEffect(() => {
+    setTryOnPatch((prev) => {
+      if (!prev.outfitId) return prev;
+      const def = AVATAR_ITEM_MAP[prev.outfitId];
+      if (!def || isAvatarItemAllowedForGender(def, state.avatar.gender)) {
+        return prev;
+      }
+      const next = { ...prev };
+      delete next.outfitId;
+      return next;
+    });
+  }, [state.avatar.gender]);
+
   const holidayStatus = getHolidayEventStatus();
   const rankInfo = getRankInfo(state.fame, state.heartlessPenaltyUntil);
 
@@ -210,10 +224,15 @@ export const ShopTab: React.FC<ShopTabProps> = ({
   const decorItems = STUDIO_ITEMS.filter(
     (i) => i.category === 'decor' && (!i.isSeasonal || holidayStatus.isActive)
   );
-  const petGearItems = STUDIO_ITEMS.filter((i) => i.category === 'petgear');
+  const petGearItems = STUDIO_ITEMS.filter(
+    (i) => i.category === 'petgear' && (!i.isSeasonal || holidayStatus.isActive)
+  );
 
   const allAvatarShopItems = AVATAR_SHOP_ITEMS.filter(
-    (i) => i.price > 0 && (!i.isSeasonal || holidayStatus.isActive)
+    (i) =>
+      i.price > 0 &&
+      (!i.isSeasonal || holidayStatus.isActive) &&
+      isAvatarItemAllowedForGender(i, state.avatar.gender)
   );
   const filteredAvatarItems =
     avatarSubFilter === 'all'
@@ -223,7 +242,7 @@ export const ShopTab: React.FC<ShopTabProps> = ({
   const buyableWalls = WALL_THEMES.filter((w) => w.price > 0);
   const buyableFloors = FLOOR_THEMES.filter((f) => f.price > 0);
   const buyableDoors = DOOR_THEMES.filter(
-    (d) => !d.isSeasonal || holidayStatus.isActive || state.ownedDoors.includes(d.id)
+    (d) => !d.isSeasonal || holidayStatus.isActive
   );
   const buyableViews = WINDOW_VIEW_THEMES.filter(
     (v) => !v.isSeasonal || holidayStatus.isActive
@@ -317,7 +336,7 @@ export const ShopTab: React.FC<ShopTabProps> = ({
                     </span>
                     {item.isSeasonal && (
                       <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-[#FFF1F2] text-[#BE123C] text-[10px] font-semibold">
-                        อีเว้นท์ · ถึง 31 ธ.ค.
+                        อีเว้นท์ · 1–31 ธ.ค.
                       </span>
                     )}
                   </div>
@@ -335,7 +354,7 @@ export const ShopTab: React.FC<ShopTabProps> = ({
                   {ownedCount > 0
                     ? `มีแล้ว ${ownedCount} ชิ้น`
                     : item.isSeasonal
-                    ? 'ลิมิเต็ดถึง 31 ธ.ค.'
+                    ? holidayStatus.deadlineLabel
                     : 'ยังไม่เคยซื้อ'}
                 </div>
                 <button
@@ -781,7 +800,7 @@ export const ShopTab: React.FC<ShopTabProps> = ({
                           </span>
                           {door.isSeasonal && (
                             <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-[#FFF1F2] text-[#BE123C] text-[10px] font-semibold">
-                              อีเว้นท์ · ถึง 31 ธ.ค.
+                              อีเว้นท์ · 1–31 ธ.ค.
                             </span>
                           )}
                         </div>
@@ -801,7 +820,7 @@ export const ShopTab: React.FC<ShopTabProps> = ({
                           : isOwned
                           ? 'ปลดล็อกแล้ว'
                           : door.isSeasonal
-                          ? 'ลิมิเต็ดถึง 31 ธ.ค.'
+                          ? holidayStatus.deadlineLabel
                           : 'เปลี่ยนประตูห้อง 3D'}
                       </span>
                       {isOwned ? (
@@ -919,7 +938,7 @@ export const ShopTab: React.FC<ShopTabProps> = ({
                           </span>
                           {view.isSeasonal && (
                             <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-[#FFF1F2] text-[#BE123C] text-[10px] font-semibold">
-                              อีเว้นท์ · ถึง 31 ธ.ค.
+                              อีเว้นท์ · 1–31 ธ.ค.
                             </span>
                           )}
                         </div>
@@ -937,7 +956,7 @@ export const ShopTab: React.FC<ShopTabProps> = ({
                           : isOwned
                           ? 'ปลดล็อกแล้ว'
                           : view.isSeasonal
-                          ? 'ลิมิเต็ดถึง 31 ธ.ค.'
+                          ? holidayStatus.deadlineLabel
                           : 'เปลี่ยนวิวหน้าต่าง 3D'}
                       </span>
                       {isOwned ? (
@@ -984,10 +1003,11 @@ export const ShopTab: React.FC<ShopTabProps> = ({
                 <Shirt className="w-5 h-5 text-[#A9623F]" />
                 <div>
                   <h2 className="text-base font-semibold text-[#1F1D1A]">
-                    หมวดแฟชั่นอวตาร &amp; โหมดลองสวมใส่ 3D
+                    หมวดแฟชั่นอวตาร &amp; โหมดลองสวมใส่ 3D (
+                    {(state.avatar.gender ?? 'female') === 'male' ? 'ผู้ชาย & ยูนิเซ็กซ์' : 'ผู้หญิง & ยูนิเซ็กซ์'})
                   </h2>
                   <p className="text-xs text-[#6E675F]">
-                    กดที่สินค้าเพื่อลองสวมใส่บนหุ่น 3 มิติได้ทันที (สินค้าที่ยังไม่ซื้อจะใช้ได้เฉพาะในโหมดตัวอย่างจนกว่าจะกดซื้อจริง)
+                    แสดงเฉพาะชุดที่เหมาะกับเพศของตัวอวตารปัจจุบัน · กดที่สินค้าเพื่อลองสวมใส่บนหุ่น 3 มิติได้ทันทีจนกว่าจะกดซื้อจริง
                   </p>
                 </div>
               </div>
@@ -1000,9 +1020,9 @@ export const ShopTab: React.FC<ShopTabProps> = ({
               </button>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-              {/* Left Sticky 3D Try-On Stage */}
-              <div className="lg:col-span-4 lg:sticky lg:top-20 rounded-2xl border border-[#E7E1D6] bg-[#FAF4EA] p-4 space-y-3">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-4 md:gap-5 items-start">
+              {/* Left Sticky 3D Try-On Stage (Computer & Tablet left side, Mobile sticky top) */}
+              <div className="md:col-span-5 lg:col-span-4 sticky top-14 md:top-20 z-20 rounded-2xl border border-[#E7E1D6] bg-[#FAF4EA] p-3 md:p-4 space-y-2.5 md:space-y-3 shadow-sm">
                 <div className="flex items-center justify-between gap-2">
                   <div className="flex items-center gap-1.5 text-sm font-semibold text-[#1F1D1A]">
                     <Eye className="w-4 h-4 text-[#A9623F]" />
@@ -1020,7 +1040,7 @@ export const ShopTab: React.FC<ShopTabProps> = ({
                   )}
                 </div>
 
-                <div className="h-[290px] sm:h-[330px] rounded-xl overflow-hidden border border-[#EAE0CF] bg-[#FAF4EA]">
+                <div className="h-[210px] sm:h-[240px] md:h-[310px] lg:h-[340px] rounded-xl overflow-hidden border border-[#EAE0CF] bg-[#FAF4EA]">
                   <AvatarPreview3D avatar={previewAvatar} />
                 </div>
 
@@ -1029,7 +1049,7 @@ export const ShopTab: React.FC<ShopTabProps> = ({
                 </p>
 
                 {tryOnEntries.length > 0 && (
-                  <div className="p-3 rounded-xl bg-white border border-[#EAE0CF] space-y-2">
+                  <div className="p-2.5 md:p-3 rounded-xl bg-white border border-[#EAE0CF] space-y-1.5 md:space-y-2 max-h-28 md:max-h-none overflow-y-auto">
                     <div className="text-xs font-semibold text-[#A9623F]">
                       กำลังลองสวมใส่ ({tryOnEntries.length} ชิ้น):
                     </div>
@@ -1053,7 +1073,7 @@ export const ShopTab: React.FC<ShopTabProps> = ({
                         );
                       })}
                     </div>
-                    <div className="text-[11px] text-[#6E675F] leading-relaxed">
+                    <div className="text-[11px] text-[#6E675F] leading-relaxed hidden md:block">
                       โหมดลองสวมใส่เพื่อดูตัวอย่างก่อนตัดสินใจ — กดปุ่ม{' '}
                       <strong className="text-[#1F1D1A]">ซื้อ &amp; ใส่เลย</strong>{' '}
                       เพื่อปลดล็อกและใช้จริงในห้องสตูดิโอ
@@ -1063,7 +1083,7 @@ export const ShopTab: React.FC<ShopTabProps> = ({
               </div>
 
               {/* Right Selectable Fashion Grid */}
-              <div className="lg:col-span-8 space-y-3.5">
+              <div className="md:col-span-7 lg:col-span-8 space-y-3.5">
                 {/* Sub-tabs for Avatar Slots */}
                 <div className="flex flex-wrap items-center gap-1.5">
                   {AVATAR_SUB_TABS.map((sub) => (
@@ -1082,7 +1102,7 @@ export const ShopTab: React.FC<ShopTabProps> = ({
                   ))}
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-1 lg:grid-cols-2 gap-3.5">
                   {filteredAvatarItems.map((avItem) => {
                     const isOwned = state.ownedAvatarItems.includes(avItem.id);
                     const canAfford = state.coins >= avItem.price;
@@ -1123,7 +1143,7 @@ export const ShopTab: React.FC<ShopTabProps> = ({
                               </span>
                               {avItem.isSeasonal && (
                                 <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-[#FFF1F2] text-[#BE123C] text-[10px] font-semibold">
-                                  อีเว้นท์ · ถึง 31 ธ.ค.
+                                  อีเว้นท์ · 1–31 ธ.ค.
                                 </span>
                               )}
                             </div>

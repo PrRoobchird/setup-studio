@@ -1,4 +1,4 @@
-export type TabId = 'studio' | 'critique' | 'quiz' | 'shop' | 'classmates';
+export type TabId = 'studio' | 'critique' | 'quiz' | 'library' | 'shop' | 'classmates';
 
 export type MajorTrack =
   | 'สถาปัตยกรรม'
@@ -149,6 +149,7 @@ export interface WallFrameArtwork {
 export type AvatarSlot = 'outfit' | 'headwear' | 'glasses' | 'handItem';
 
 export type AvatarGender = 'female' | 'male';
+export type OutfitGender = AvatarGender | 'unisex';
 
 export type HairStyleId =
   | 'bob'
@@ -196,6 +197,7 @@ export interface AvatarItemDef {
   secondaryHex: string;
   isSeasonal?: boolean;
   eventTag?: string;
+  allowedGender?: OutfitGender;
 }
 
 export type ArtCategory =

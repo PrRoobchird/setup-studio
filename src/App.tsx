@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
+  BookOpen,
   Brain,
   Camera,
   Coins,
@@ -15,6 +16,7 @@ import {
 } from 'lucide-react';
 import { ArtCritiqueTab } from './components/ArtCritiqueTab';
 import { ClassmatesTab } from './components/ClassmatesTab';
+import { KnowledgeLibraryTab } from './components/KnowledgeLibraryTab';
 import { MyStudioTab } from './components/MyStudioTab';
 import { QuizTab } from './components/QuizTab';
 import { ShopFilter, ShopTab } from './components/ShopTab';
@@ -42,9 +44,11 @@ import {
   WALL_MAP,
   WINDOW_VIEW_MAP,
   findFreeTilesForPet,
+  getHolidayEventStatus,
   getOccupiedTileSet,
   getPetFootprintTiles,
   getRankInfo,
+  isAvatarItemAllowedForGender,
 } from './data/catalog';
 import {
   ArtSubmission,
@@ -54,19 +58,28 @@ import {
   MajorTrack,
   OwnedPet,
   PetSpecies,
+  QuizExamCode,
   StickerType,
   StudioGameState,
   TabId,
   WallFrameArtwork,
   WallFrameType,
 } from './types/studio';
-import { DAILY_QUIZ_LIMIT, getLocalDateKey } from './data/tpatQuizBank';
+import { DAILY_QUIZ_LIMIT, QuizTrackFilter, getLocalDateKey } from './data/tpatQuizBank';
 import { playTone } from './utils/sound';
 
 const STORAGE_KEY = 'born_to_be_art_dream_studio_v1';
 
 function clampFame(current: number, delta: number): number {
   return Math.min(MAX_FAME, Math.max(0, current + Math.max(0, delta)));
+}
+
+function resolveOutfitForGender(gender: AvatarGender, currentOutfitId: string): string {
+  const def = AVATAR_ITEM_MAP[currentOutfitId];
+  if (def && isAvatarItemAllowedForGender(def, gender)) {
+    return currentOutfitId;
+  }
+  return gender === 'male' ? 'outfit_starter_polo' : 'outfit_bjd_ribbon_dress';
 }
 
 function reconcilePetLifecycle(
@@ -252,8 +265,14 @@ function loadSavedState(): StudioGameState {
     };
 
     const ownedAvSet = new Set(hydrated.ownedAvatarItems);
-    if (!ownedAvSet.has(hydrated.avatar.outfitId) || !AVATAR_ITEM_MAP[hydrated.avatar.outfitId]) {
-      hydrated.avatar.outfitId = 'outfit_clay_overalls';
+    const activeGender: AvatarGender = hydrated.avatar.gender ?? 'female';
+    const currentOutfitDef = AVATAR_ITEM_MAP[hydrated.avatar.outfitId];
+    if (
+      !currentOutfitDef ||
+      (!ownedAvSet.has(hydrated.avatar.outfitId) && currentOutfitDef.price > 0) ||
+      !isAvatarItemAllowedForGender(currentOutfitDef, activeGender)
+    ) {
+      hydrated.avatar.outfitId = resolveOutfitForGender(activeGender, hydrated.avatar.outfitId);
     }
     if (!ownedAvSet.has(hydrated.avatar.headwearId)) {
       hydrated.avatar.headwearId = 'head_none';
@@ -281,6 +300,8 @@ export default function App() {
   const [state, setState] = useState<StudioGameState>(loadSavedState);
   const [activeTab, setActiveTab] = useState<TabId>('studio');
   const [shopFilter, setShopFilter] = useState<ShopFilter>('all');
+  const [quizTrackFilter, setQuizTrackFilter] = useState<QuizTrackFilter>('mixed');
+  const [libraryExamFilter, setLibraryExamFilter] = useState<'ALL' | QuizExamCode>('ALL');
   const [coinBounce, setCoinBounce] = useState(false);
   const [toasts, setToasts] = useState<ToastNotice[]>([]);
   const [showProfileModal, setShowProfileModal] = useState(false);
@@ -448,11 +469,20 @@ export default function App() {
 
   // Avatar customization & fashion purchase
   const handleUpdateAvatar = (patch: Partial<AvatarConfig>) => {
-    setState((prev) => ({
-      ...prev,
-      hasSelectedGender: patch.gender ? true : prev.hasSelectedGender,
-      avatar: { ...prev.avatar, ...patch },
-    }));
+    setState((prev) => {
+      const nextGender = patch.gender ?? prev.avatar.gender ?? 'female';
+      const candidateOutfit = patch.outfitId ?? prev.avatar.outfitId;
+      const safeOutfitId = resolveOutfitForGender(nextGender, candidateOutfit);
+      return {
+        ...prev,
+        hasSelectedGender: patch.gender ? true : prev.hasSelectedGender,
+        avatar: {
+          ...prev.avatar,
+          ...patch,
+          outfitId: safeOutfitId,
+        },
+      };
+    });
     playTone('click', state.soundEnabled);
   };
 
@@ -467,6 +497,7 @@ export default function App() {
             ? 'side_part'
             : 'bob'
           : prev.avatar.hairStyleId;
+      const safeOutfitId = resolveOutfitForGender(gender, prev.avatar.outfitId);
       return {
         ...prev,
         hasSelectedGender: true,
@@ -474,6 +505,7 @@ export default function App() {
           ...prev.avatar,
           gender,
           hairStyleId: nextHair,
+          outfitId: safeOutfitId,
         },
       };
     });
@@ -486,13 +518,33 @@ export default function App() {
 
   const handleBuyAvatarItem = (itemId: string) => {
     const item = AVATAR_ITEM_MAP[itemId];
-    if (!item || state.ownedAvatarItems.includes(itemId) || state.coins < item.price) {
+    if (!item) {
+      playTone('error', state.soundEnabled);
+      return;
+    }
+    if (item.isSeasonal && !getHolidayEventStatus().isActive) {
+      playTone('error', state.soundEnabled);
+      pushToast('สินค้าอีเว้นท์เปิดขายเฉพาะวันที่ 1 – 31 ธันวาคมเท่านั้น', 'info');
+      return;
+    }
+    if (!isAvatarItemAllowedForGender(item, state.avatar.gender)) {
+      playTone('error', state.soundEnabled);
+      pushToast(
+        item.allowedGender === 'male'
+          ? 'ชุดนี้สำหรับตัวละครผู้ชายเท่านั้น'
+          : 'ชุดนี้สำหรับตัวละครผู้หญิงเท่านั้น',
+        'info'
+      );
+      return;
+    }
+    if (state.ownedAvatarItems.includes(itemId) || state.coins < item.price) {
       playTone('error', state.soundEnabled);
       return;
     }
     const gainedFame = Math.max(0, Math.min(item.fameBonus, MAX_FAME - state.fame));
     setState((prev) => {
       if (prev.ownedAvatarItems.includes(itemId) || prev.coins < item.price) return prev;
+      if (!isAvatarItemAllowedForGender(item, prev.avatar.gender)) return prev;
       const nextAvatar: AvatarConfig = { ...prev.avatar };
       if (item.slot === 'outfit') nextAvatar.outfitId = item.id;
       if (item.slot === 'headwear') nextAvatar.headwearId = item.id;
@@ -523,9 +575,19 @@ export default function App() {
       playTone('error', state.soundEnabled);
       return;
     }
+    if (!isAvatarItemAllowedForGender(item, state.avatar.gender)) {
+      playTone('error', state.soundEnabled);
+      pushToast(
+        item.allowedGender === 'male'
+          ? 'ชุดนี้สำหรับตัวละครผู้ชายเท่านั้น'
+          : 'ชุดนี้สำหรับตัวละครผู้หญิงเท่านั้น',
+        'info'
+      );
+      return;
+    }
     setState((prev) => {
       const ownedNow = item.price === 0 || prev.ownedAvatarItems.includes(itemId);
-      if (!ownedNow) return prev;
+      if (!ownedNow || !isAvatarItemAllowedForGender(item, prev.avatar.gender)) return prev;
       const nextAvatar: AvatarConfig = { ...prev.avatar };
       if (slot === 'outfit') nextAvatar.outfitId = itemId;
       if (slot === 'headwear') nextAvatar.headwearId = itemId;
@@ -558,7 +620,16 @@ export default function App() {
   // Shop handlers
   const handleBuyItem = (itemId: string) => {
     const item = ITEM_MAP[itemId];
-    if (!item || state.coins < item.price) {
+    if (!item) {
+      playTone('error', state.soundEnabled);
+      return;
+    }
+    if (item.isSeasonal && !getHolidayEventStatus().isActive) {
+      playTone('error', state.soundEnabled);
+      pushToast('สินค้าอีเว้นท์เปิดขายเฉพาะวันที่ 1 – 31 ธันวาคมเท่านั้น', 'info');
+      return;
+    }
+    if (state.coins < item.price) {
       playTone('error', state.soundEnabled);
       return;
     }
@@ -658,7 +729,16 @@ export default function App() {
 
   const handleBuyDoor = (doorId: string) => {
     const door = DOOR_MAP[doorId];
-    if (!door || state.ownedDoors.includes(doorId) || state.coins < door.price) {
+    if (!door) {
+      playTone('error', state.soundEnabled);
+      return;
+    }
+    if (door.isSeasonal && !getHolidayEventStatus().isActive) {
+      playTone('error', state.soundEnabled);
+      pushToast('ประตูอีเว้นท์เปิดขายเฉพาะวันที่ 1 – 31 ธันวาคมเท่านั้น', 'info');
+      return;
+    }
+    if (state.ownedDoors.includes(doorId) || state.coins < door.price) {
       playTone('error', state.soundEnabled);
       return;
     }
@@ -727,7 +807,16 @@ export default function App() {
 
   const handleBuyWindowView = (viewId: string) => {
     const view = WINDOW_VIEW_MAP[viewId];
-    if (!view || state.ownedWindowViews.includes(viewId) || state.coins < view.price) {
+    if (!view) {
+      playTone('error', state.soundEnabled);
+      return;
+    }
+    if (view.isSeasonal && !getHolidayEventStatus().isActive) {
+      playTone('error', state.soundEnabled);
+      pushToast('วิวหน้าต่างอีเว้นท์เปิดขายเฉพาะวันที่ 1 – 31 ธันวาคมเท่านั้น', 'info');
+      return;
+    }
+    if (state.ownedWindowViews.includes(viewId) || state.coins < view.price) {
       playTone('error', state.soundEnabled);
       return;
     }
@@ -1066,6 +1155,7 @@ export default function App() {
       avatar: {
         ...prev.avatar,
         gender: draftGender,
+        outfitId: resolveOutfitForGender(draftGender, prev.avatar.outfitId),
       },
     }));
     setShowProfileModal(false);
@@ -1107,6 +1197,12 @@ export default function App() {
       label: 'ควิซ TPAT',
       shortLabel: 'ควิซ',
       icon: <Brain className="w-5 h-5" />,
+    },
+    {
+      id: 'library',
+      label: 'คลังความรู้',
+      shortLabel: 'ความรู้',
+      icon: <BookOpen className="w-5 h-5" />,
     },
     {
       id: 'shop',
@@ -1296,9 +1392,24 @@ export default function App() {
         {activeTab === 'quiz' && (
           <QuizTab
             state={state}
+            initialTrack={quizTrackFilter}
             onQuizAnswered={handleQuizAnswered}
             onGoToCritique={() => setActiveTab('critique')}
             onGoToShop={() => openShopWithFilter('all')}
+            onGoToLibrary={(examCode) => {
+              setLibraryExamFilter(examCode ?? 'ALL');
+              setActiveTab('library');
+            }}
+          />
+        )}
+
+        {activeTab === 'library' && (
+          <KnowledgeLibraryTab
+            initialExamFilter={libraryExamFilter}
+            onOpenQuiz={(examCode) => {
+              setQuizTrackFilter(examCode ?? 'mixed');
+              setActiveTab('quiz');
+            }}
           />
         )}
 
@@ -1353,7 +1464,7 @@ export default function App() {
         className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-[#E7E1D6]"
         aria-label="เมนูหลักมือถือ"
       >
-        <div className="grid grid-cols-5 h-14 items-center">
+        <div className="grid grid-cols-6 h-14 items-center">
           {navItems.map((tab) => {
             const isActive = activeTab === tab.id;
             return (

@@ -9,6 +9,14 @@ import {
   sculptClayGeo,
 } from './textures';
 
+export interface HandHoldPose {
+  armX: number;
+  armZ: number;
+  forearmX: number;
+  forearmY: number;
+  forearmZ: number;
+}
+
 export interface AvatarRig3D {
   root: THREE.Group;
   bodyGroup: THREE.Group;
@@ -22,6 +30,26 @@ export interface AvatarRig3D {
   propGroup: THREE.Group;
   wateringCanGroup: THREE.Group;
   sketchPencilGroup: THREE.Group;
+  handHoldPose: HandHoldPose;
+}
+
+export function getHandHoldPose(handItemId?: string): HandHoldPose {
+  switch (handItemId) {
+    case 'hand_brush':
+      return { armX: -0.24, armZ: -0.08, forearmX: -1.32, forearmY: 0.08, forearmZ: 0.24 };
+    case 'hand_coffee':
+      return { armX: -0.2, armZ: -0.07, forearmX: -1.16, forearmY: 0.06, forearmZ: 0.22 };
+    case 'hand_sketchbook':
+      return { armX: -0.22, armZ: -0.1, forearmX: -1.26, forearmY: 0.14, forearmZ: 0.28 };
+    case 'hand_stylus':
+      return { armX: -0.26, armZ: -0.09, forearmX: -1.18, forearmY: 0.12, forearmZ: 0.24 };
+    case 'hand_camera':
+      return { armX: -0.3, armZ: -0.08, forearmX: -1.28, forearmY: 0.08, forearmZ: 0.2 };
+    case 'hand_xmas_gift':
+      return { armX: -0.18, armZ: -0.09, forearmX: -1.06, forearmY: 0.1, forearmZ: 0.24 };
+    default:
+      return { armX: -0.2, armZ: -0.07, forearmX: -1.16, forearmY: 0.06, forearmZ: 0.22 };
+  }
 }
 
 /**
@@ -429,15 +457,32 @@ export function buildAvatarRig3D(config: AvatarConfig): AvatarRig3D {
   const isClayOveralls = outfitId === 'outfit_clay_overalls';
   const isOveralls = isClayOveralls || outfitId === 'outfit_overalls';
   const isStarterTank = outfitId === 'outfit_starter_tank';
+  const isStarterPolo = outfitId === 'outfit_starter_polo';
   const isBjdRibbonDress = outfitId === 'outfit_bjd_ribbon_dress';
+  const isSanta = outfitId === 'outfit_xmas_santa';
+  const isSanty = outfitId === 'outfit_xmas_santy';
+  const isElfMale = outfitId === 'outfit_xmas_elf_male';
+  const isElfFemale = outfitId === 'outfit_xmas_elf_female';
+  const isSkirtOutfit =
+    isBjdRibbonDress ||
+    outfitId === 'outfit_cardigan' ||
+    outfitId === 'outfit_pastel_atelier' ||
+    outfitId === 'outfit_french_blouse' ||
+    outfitId === 'outfit_fem_trench' ||
+    isSanty ||
+    isElfFemale;
 
   const primaryMat = clayMat(outfitDef.primaryHex, 0.78, 0.007);
   const secondaryMat = clayMat(outfitDef.secondaryHex, 0.79, 0.006);
+  const leatherDarkMat = clayMat('#2B2625', 0.72, 0.006);
 
   const redStripeHex = '#C95443';
   const creamStripeHex = outfitDef.secondaryHex || '#F5ECE0';
   const stripedTex = isClayOveralls
     ? createClayStripedTexture(creamStripeHex, redStripeHex, 5)
+    : null;
+  const elfSockTex = isElfFemale
+    ? createClayStripedTexture('#FAF7F2', '#D13B47', 6)
     : null;
   const redCuffMat = clayMat(redStripeHex, 0.78, 0.006);
 
@@ -453,12 +498,26 @@ export function buildAvatarRig3D(config: AvatarConfig): AvatarRig3D {
     ? '#52729B'
     : isStarterTank
     ? '#4A668C'
+    : isStarterPolo
+    ? '#D9CCB8'
     : outfitId === 'outfit_arch_blazer'
     ? '#343A44'
+    : outfitId === 'outfit_street_cargo'
+    ? '#58624F'
+    : outfitId === 'outfit_male_trench'
+    ? '#2A2F3A'
     : outfitId === 'outfit_cardigan'
     ? '#8B6E5B'
+    : outfitId === 'outfit_french_blouse'
+    ? '#7A2D3F'
+    : outfitId === 'outfit_fem_trench'
+    ? '#4A3B36'
     : outfitId === 'outfit_ny_party'
-    ? '#24314A'
+    ? '#1F293D'
+    : isSanta
+    ? '#B92936'
+    : isElfMale
+    ? '#1E5E3B'
     : '#435C7D';
 
   const denimMat = clayMat(denimHex, 0.82, 0.008);
@@ -469,10 +528,18 @@ export function buildAvatarRig3D(config: AvatarConfig): AvatarRig3D {
   const shoeUpperMat = clayMat(
     isClayOveralls || outfitId === 'outfit_overalls'
       ? '#885542'
-      : isBjdRibbonDress
+      : isBjdRibbonDress || outfitId === 'outfit_french_blouse'
       ? '#6B3641'
       : isStarterTank
       ? '#4E637E'
+      : isStarterPolo
+      ? '#334E73'
+      : isSanta || isSanty || outfitId === 'outfit_fem_trench'
+      ? '#2E2625'
+      : isElfMale || isElfFemale
+      ? '#1E5E3B'
+      : outfitId === 'outfit_male_trench' || outfitId === 'outfit_arch_blazer'
+      ? '#382C26'
       : '#744D3D',
     0.76,
     0.006
@@ -483,7 +550,15 @@ export function buildAvatarRig3D(config: AvatarConfig): AvatarRig3D {
   // 1. SMOOTH ROUNDED CARTOON LEGS & ROUND-TOE SNEAKERS (hip y = 0.395, sole at y = 0)
   // ==========================================================
   const bareLowerLeg =
-    isStarterTank || outfitId === 'outfit_cardigan' || isBjdRibbonDress;
+    isStarterTank ||
+    isStarterPolo ||
+    isBjdRibbonDress ||
+    outfitId === 'outfit_cardigan' ||
+    outfitId === 'outfit_pastel_atelier' ||
+    outfitId === 'outfit_french_blouse' ||
+    outfitId === 'outfit_fem_trench' ||
+    isSanty ||
+    isElfFemale;
 
   const smoothLegGeo = createSmoothLegGeo();
   const cuffTubeGeo = sculptClayGeo(
@@ -505,32 +580,74 @@ export function buildAvatarRig3D(config: AvatarConfig): AvatarRig3D {
         new THREE.CylinderGeometry(0.05, 0.042, 0.165, 22),
         0.0007
       );
-      const calfMat = isBjdRibbonDress ? whiteMat : skinMat;
+      const calfMat = isElfFemale
+        ? clayMat('#FAF7F2', 0.8, 0.005, elfSockTex)
+        : isBjdRibbonDress || isSanty || outfitId === 'outfit_french_blouse'
+        ? whiteMat
+        : skinMat;
       addMesh(legPivot, upperLegGeo, skinMat, [0, -0.082, 0], undefined, [1.0, 1.0, 0.96]);
       addMesh(legPivot, lowerLegGeo, calfMat, [0, -0.238, 0], undefined, [1.0, 1.0, 0.96]);
-      if (isStarterTank) {
+      if (isStarterTank || isStarterPolo) {
         addMesh(
           legPivot,
-          sculptClayGeo(new THREE.CylinderGeometry(0.061, 0.059, 0.12, 22), 0.0007),
+          sculptClayGeo(new THREE.CylinderGeometry(0.061, 0.059, 0.125, 22), 0.0007),
           denimMat,
           [0, -0.058, 0]
         );
       }
+      if (isSanty) {
+        addMesh(
+          legPivot,
+          sculptClayGeo(new THREE.TorusGeometry(0.049, 0.012, 10, 20), 0.0006),
+          whiteMat,
+          [0, -0.258, 0],
+          [Math.PI / 2, 0, 0]
+        );
+      }
     } else {
       addMesh(legPivot, smoothLegGeo, denimMat, [0, 0, 0], undefined, [1.0, 1.0, 0.97]);
+      if (outfitId === 'outfit_street_cargo') {
+        addMesh(
+          legPivot,
+          createRoundedPanelGeo(0.024, 0.072, 0.048, 0.008, 0.004),
+          clayMat('#495241', 0.8, 0.006),
+          [side * 0.05, -0.155, 0.004]
+        );
+      }
     }
 
     if (isOveralls) {
       // Soft rolled light-blue denim cuff right above shoe
       addMesh(legPivot, cuffTubeGeo, cuffBlueMat, [0, -0.282, 0]);
       addMesh(legPivot, cuffRimGeo, cuffBlueMat, [0, -0.256, 0], [Math.PI / 2, 0, 0]);
+    } else if (isSanta) {
+      addMesh(
+        legPivot,
+        sculptClayGeo(new THREE.TorusGeometry(0.052, 0.015, 10, 20), 0.0007),
+        whiteMat,
+        [0, -0.278, 0],
+        [Math.PI / 2, 0, 0]
+      );
+    } else if (isElfMale || isElfFemale) {
+      addMesh(
+        legPivot,
+        sculptClayGeo(new THREE.TorusGeometry(0.047, 0.011, 10, 20), 0.0006),
+        secondaryMat,
+        [0, -0.285, 0],
+        [Math.PI / 2, 0, 0]
+      );
     }
 
-    // Soft rounded cartoon two-tone sneakers resting flush at y = 0
+    // Soft rounded cartoon two-tone sneakers / boots resting flush at y = 0
     const shoeGroup = new THREE.Group();
     shoeGroup.position.set(0, -0.352, 0.018);
     shoeGroup.rotation.y = side * 0.08;
     legPivot.add(shoeGroup);
+
+    const shoeFrontToeMat =
+      isSanta || isSanty || outfitId === 'outfit_fem_trench' || outfitId === 'outfit_arch_blazer'
+        ? shoeUpperMat
+        : soleMat;
 
     // Cream rounded sole (0.395 - 0.352 - 0.043 = 0)
     addMesh(
@@ -556,11 +673,11 @@ export function buildAvatarRig3D(config: AvatarConfig): AvatarRig3D {
       shoeUpperMat,
       [0, 0.016, -0.016]
     );
-    // Plump smooth rounded cream toe cap
+    // Plump smooth rounded toe cap
     addMesh(
       shoeGroup,
       sculptClayGeo(new THREE.SphereGeometry(0.053, 20, 16), 0.0006),
-      soleMat,
+      shoeFrontToeMat,
       [0, -0.006, 0.042],
       undefined,
       [0.94, 0.62, 0.96]
@@ -569,19 +686,23 @@ export function buildAvatarRig3D(config: AvatarConfig): AvatarRig3D {
     addMesh(
       shoeGroup,
       new THREE.CapsuleGeometry(0.0045, 0.032, 6, 8),
-      soleMat,
+      isSanta || isSanty ? brassMat : soleMat,
       [0, 0.024, 0.032],
       [0.22, 0, Math.PI / 2]
     );
     addMesh(
       shoeGroup,
       new THREE.CapsuleGeometry(0.0045, 0.034, 6, 8),
-      soleMat,
+      isSanta || isSanty ? brassMat : soleMat,
       [0, 0.032, 0.012],
       [0.22, 0, Math.PI / 2]
     );
 
-    if (isBjdRibbonDress) {
+    if (isElfMale || isElfFemale) {
+      addMesh(shoeGroup, new THREE.SphereGeometry(0.012, 10, 10), brassMat, [0, 0.012, 0.072]);
+    }
+
+    if (isBjdRibbonDress || outfitId === 'outfit_french_blouse') {
       addMesh(
         shoeGroup,
         new THREE.TorusGeometry(0.041, 0.007, 8, 16, Math.PI * 1.1),
@@ -687,44 +808,44 @@ export function buildAvatarRig3D(config: AvatarConfig): AvatarRig3D {
       );
     }
 
-    // Smooth beveled front & back bib panels (zero sharp rectangular corners!)
+    // Smooth beveled front & back bib panels tucked seamlessly into torso curve
     addMesh(
       torsoGroup,
-      createRoundedPanelGeo(0.156, 0.16, 0.034, 0.024, 0.008),
+      createRoundedPanelGeo(0.15, 0.16, 0.036, 0.024, 0.008),
       denimMat,
-      [0, 0.562, frontChestZ]
+      [0, 0.562, frontChestZ - 0.001]
     );
     addMesh(
       torsoGroup,
-      createRoundedPanelGeo(0.152, 0.14, 0.03, 0.022, 0.007),
+      createRoundedPanelGeo(0.148, 0.14, 0.032, 0.022, 0.007),
       denimMat,
       [0, 0.548, -frontChestZ + 0.004]
     );
 
-    // Centered U-shaped front pocket
+    // Centered U-shaped front pocket seated flush on bib
     addMesh(
       torsoGroup,
       createRoundedPanelGeo(0.08, 0.062, 0.016, 0.016, 0.005),
       pocketMat,
-      [0, 0.552, frontChestZ + 0.016]
+      [0, 0.552, frontChestZ + 0.015]
     );
     addMesh(
       torsoGroup,
       new THREE.CylinderGeometry(0.039, 0.039, 0.016, 18, 1, false, Math.PI * 0.5, Math.PI),
       pocketMat,
-      [0, 0.528, frontChestZ + 0.016],
+      [0, 0.528, frontChestZ + 0.015],
       [Math.PI / 2, 0, Math.PI / 2]
     );
 
-    // Contoured denim shoulder straps + tan clay buckles & buttons
+    // Contoured denim shoulder straps + tan clay buckles & buttons seated flush
     for (const s of [-1, 1]) {
       addClayStrand(
         torsoGroup,
         [
-          [s * 0.06, 0.638, frontChestZ + 0.004],
-          [s * 0.066, 0.724, 0.038],
-          [s * 0.064, 0.718, -0.038],
-          [s * 0.06, 0.616, -frontChestZ + 0.004],
+          [s * 0.058, 0.634, frontChestZ + 0.002],
+          [s * 0.066, 0.724, 0.036],
+          [s * 0.064, 0.718, -0.036],
+          [s * 0.058, 0.614, -frontChestZ + 0.004],
         ],
         0.017,
         denimMat
@@ -733,7 +854,7 @@ export function buildAvatarRig3D(config: AvatarConfig): AvatarRig3D {
         torsoGroup,
         new THREE.TorusGeometry(0.013, 0.004, 8, 14),
         buckleMat,
-        [s * 0.06, 0.634, frontChestZ + 0.018],
+        [s * 0.058, 0.634, frontChestZ + 0.017],
         [0, 0, 0],
         [1, 1.12, 0.7]
       );
@@ -741,31 +862,51 @@ export function buildAvatarRig3D(config: AvatarConfig): AvatarRig3D {
         torsoGroup,
         new THREE.CylinderGeometry(0.011, 0.011, 0.01, 14),
         buttonMat,
-        [s * 0.06, 0.627, frontChestZ + 0.021],
+        [s * 0.058, 0.627, frontChestZ + 0.019],
         [Math.PI / 2, 0, 0]
       );
     }
-  } else if (
-    isBjdRibbonDress ||
-    outfitId === 'outfit_cardigan' ||
-    outfitId === 'outfit_ny_party'
-  ) {
+  } else if (isSkirtOutfit) {
+    // Inner matching pelvis/bloomer base so sitting never exposes hollow space inside flared skirts
+    const innerPelvisMat = isBjdRibbonDress || isSanty || outfitId === 'outfit_french_blouse' ? whiteMat : denimMat;
     addMesh(
       torsoGroup,
-      createClayTorsoGeo(waistRadius * 0.95, 0.148, 0.178, 0.21),
-      isBjdRibbonDress ? primaryMat : outfitId === 'outfit_cardigan' ? secondaryMat : primaryMat,
-      [0, 0.43, 0],
+      createClayTorsoGeo(hipRadius * 0.92, hipRadius * 0.96, hipRadius * 0.88, 0.12),
+      innerPelvisMat,
+      [0, 0.415, 0],
+      undefined,
+      [1.0, 1, 0.8]
+    );
+
+    const skirtMat = isBjdRibbonDress
+      ? primaryMat
+      : outfitId === 'outfit_pastel_atelier' || isSanty || isElfFemale
+      ? primaryMat
+      : secondaryMat;
+    const bodiceMat =
+      outfitId === 'outfit_pastel_atelier' || outfitId === 'outfit_french_blouse'
+        ? secondaryMat
+        : primaryMat;
+
+    // Smooth flared A-line / pleated skirt cone
+    addMesh(
+      torsoGroup,
+      createClayTorsoGeo(waistRadius * 0.94, 0.146, 0.178, 0.215),
+      skirtMat,
+      [0, 0.428, 0],
       undefined,
       [1.02, 1, 0.86]
     );
+    // Rounded upper bodice
     addMesh(
       torsoGroup,
-      createClayTorsoGeo(shoulderHalf * 0.92, waistRadius * 0.92, waistRadius, 0.21),
-      primaryMat,
+      createClayTorsoGeo(shoulderHalf * 0.93, waistRadius * 0.92, waistRadius * 0.98, 0.215),
+      bodiceMat,
       [0, 0.615, 0],
       undefined,
       [1.02, 1, 0.82]
     );
+
     if (isBjdRibbonDress) {
       addMesh(
         torsoGroup,
@@ -774,29 +915,256 @@ export function buildAvatarRig3D(config: AvatarConfig): AvatarRig3D {
         [0, 0.718, 0.004],
         [Math.PI / 2 + 0.12, 0, 0]
       );
-      addClayBow(torsoGroup, clayMat('#E4899D', 0.78), [0, 0.525, frontChestZ + 0.01], 1.08);
-    } else if (outfitId === 'outfit_cardigan') {
-      addMesh(torsoGroup, new THREE.CapsuleGeometry(0.021, 0.115, 6, 12), whiteMat, [0, 0.625, frontChestZ + 0.004]);
-    } else {
       addMesh(
         torsoGroup,
-        createRoundedPanelGeo(0.048, 0.175, 0.02, 0.014, 0.005),
+        new THREE.TorusGeometry(0.11, 0.012, 10, 24),
         whiteMat,
-        [0, 0.615, frontChestZ + 0.004]
+        [0, 0.518, 0],
+        [Math.PI / 2, 0, 0],
+        [1.02, 0.84, 1]
       );
       addMesh(
         torsoGroup,
-        createRoundedPanelGeo(0.02, 0.175, 0.022, 0.008, 0.004),
-        secondaryMat,
-        [-0.032, 0.615, frontChestZ + 0.006],
-        [0, 0, -0.07]
+        new THREE.TorusGeometry(0.145, 0.012, 10, 24),
+        whiteMat,
+        [0, 0.335, 0],
+        [Math.PI / 2, 0, 0],
+        [1.02, 0.86, 1]
+      );
+      addClayBow(torsoGroup, clayMat('#E4899D', 0.78), [0, 0.525, frontChestZ + 0.012], 1.08);
+    } else if (outfitId === 'outfit_cardigan') {
+      // Wrap-around knitted collar + cream inner tee + flush cardigan placket & buttons
+      addMesh(
+        torsoGroup,
+        new THREE.TorusGeometry(0.054, 0.013, 10, 24),
+        primaryMat,
+        [0, 0.718, 0.002],
+        [Math.PI / 2 + 0.12, 0, 0]
       );
       addMesh(
         torsoGroup,
-        createRoundedPanelGeo(0.02, 0.175, 0.022, 0.008, 0.004),
+        createRoundedPanelGeo(0.046, 0.142, 0.022, 0.014, 0.005),
+        whiteMat,
+        [0, 0.635, frontChestZ + 0.004]
+      );
+      for (const s of [-1, 1]) {
+        addMesh(
+          torsoGroup,
+          createRoundedPanelGeo(0.02, 0.155, 0.02, 0.008, 0.004),
+          primaryMat,
+          [s * 0.028, 0.628, frontChestZ + 0.006],
+          [0, 0, s * 0.08]
+        );
+      }
+      addMesh(
+        torsoGroup,
+        createRoundedPanelGeo(0.028, 0.09, 0.02, 0.008, 0.004),
+        primaryMat,
+        [0, 0.558, frontChestZ + 0.006]
+      );
+      for (const [by, bz] of [
+        [0.582, frontChestZ + 0.015],
+        [0.542, frontChestZ + 0.016],
+      ]) {
+        addMesh(torsoGroup, new THREE.CylinderGeometry(0.007, 0.007, 0.006, 12), buckleMat, [0, by, bz], [Math.PI / 2, 0, 0]);
+      }
+    } else if (outfitId === 'outfit_pastel_atelier') {
+      // Cream blouse collar + sage linen pinafore apron bib + contoured back straps
+      addMesh(
+        torsoGroup,
+        new THREE.TorusGeometry(0.05, 0.011, 10, 22),
         secondaryMat,
-        [0.032, 0.615, frontChestZ + 0.006],
-        [0, 0, 0.07]
+        [0, 0.72, 0.003],
+        [Math.PI / 2 + 0.1, 0, 0]
+      );
+      for (const s of [-1, 1]) {
+        addMesh(
+          torsoGroup,
+          createRoundedPanelGeo(0.032, 0.024, 0.012, 0.006, 0.003),
+          secondaryMat,
+          [s * 0.026, 0.706, 0.052],
+          [0.32, s * -0.24, s * 0.28]
+        );
+      }
+      addMesh(
+        torsoGroup,
+        createRoundedPanelGeo(0.138, 0.142, 0.03, 0.02, 0.006),
+        primaryMat,
+        [0, 0.575, frontChestZ + 0.001]
+      );
+      for (const s of [-1, 1] as const) {
+        addClayStrand(
+          torsoGroup,
+          [
+            [s * 0.052, 0.64, frontChestZ + 0.004],
+            [s * 0.062, 0.726, 0.024],
+            [s * 0.056, 0.716, -0.04],
+            [s * 0.048, 0.525, -frontChestZ - 0.004],
+          ],
+          0.013,
+          primaryMat
+        );
+        addMesh(
+          torsoGroup,
+          new THREE.CylinderGeometry(0.0075, 0.0075, 0.007, 12),
+          buckleMat,
+          [s * 0.052, 0.635, frontChestZ + 0.016],
+          [Math.PI / 2, 0, 0]
+        );
+      }
+      addMesh(
+        torsoGroup,
+        new THREE.TorusGeometry(0.11, 0.014, 10, 24),
+        primaryMat,
+        [0, 0.515, 0],
+        [Math.PI / 2, 0, 0],
+        [1.02, 0.84, 1]
+      );
+    } else if (outfitId === 'outfit_french_blouse') {
+      // Cream Peter Pan collar + burgundy satin ribbon bow + center placket + flush pearl buttons
+      addMesh(
+        torsoGroup,
+        new THREE.TorusGeometry(0.054, 0.011, 10, 22),
+        secondaryMat,
+        [0, 0.718, 0.004],
+        [Math.PI / 2 + 0.1, 0, 0]
+      );
+      for (const s of [-1, 1]) {
+        addMesh(
+          torsoGroup,
+          createRoundedPanelGeo(0.034, 0.024, 0.012, 0.008, 0.003),
+          secondaryMat,
+          [s * 0.026, 0.704, 0.052],
+          [0.34, s * -0.22, s * 0.25]
+        );
+      }
+      addMesh(
+        torsoGroup,
+        createRoundedPanelGeo(0.022, 0.165, 0.014, 0.006, 0.003),
+        secondaryMat,
+        [0, 0.6, frontChestZ + 0.004]
+      );
+      addClayBow(torsoGroup, primaryMat, [0, 0.688, frontChestZ + 0.012], 0.94);
+      for (const [by, bz] of [
+        [0.64, frontChestZ + 0.012],
+        [0.59, frontChestZ + 0.013],
+        [0.545, frontChestZ + 0.015],
+      ]) {
+        addMesh(torsoGroup, new THREE.SphereGeometry(0.0065, 10, 10), whiteMat, [0, by, bz]);
+      }
+      addMesh(
+        torsoGroup,
+        new THREE.TorusGeometry(0.11, 0.013, 10, 24),
+        primaryMat,
+        [0, 0.515, 0],
+        [Math.PI / 2, 0, 0],
+        [1.02, 0.84, 1]
+      );
+    } else if (outfitId === 'outfit_fem_trench') {
+      // Wrap-around trench collar + inner cream top + lapels + double-breasted buttons + flush belt buckle
+      addMesh(
+        torsoGroup,
+        new THREE.TorusGeometry(0.056, 0.014, 10, 24),
+        primaryMat,
+        [0, 0.718, 0.0],
+        [Math.PI / 2 + 0.1, 0, 0]
+      );
+      addMesh(
+        torsoGroup,
+        createRoundedPanelGeo(0.048, 0.165, 0.022, 0.012, 0.004),
+        whiteMat,
+        [0, 0.625, frontChestZ + 0.003]
+      );
+      for (const s of [-1, 1]) {
+        addMesh(
+          torsoGroup,
+          createRoundedPanelGeo(0.032, 0.175, 0.022, 0.01, 0.004),
+          primaryMat,
+          [s * 0.034, 0.625, frontChestZ + 0.008],
+          [0, 0, s * 0.12]
+        );
+      }
+      for (const [by, bz] of [
+        [0.585, frontChestZ + 0.015],
+        [0.545, frontChestZ + 0.016],
+      ]) {
+        for (const s of [-1, 1]) {
+          addMesh(torsoGroup, new THREE.CylinderGeometry(0.0065, 0.0065, 0.006, 12), secondaryMat, [s * 0.022, by, bz], [Math.PI / 2, 0, 0]);
+        }
+      }
+      addMesh(
+        torsoGroup,
+        new THREE.TorusGeometry(0.11, 0.015, 10, 24),
+        secondaryMat,
+        [0, 0.518, 0],
+        [Math.PI / 2, 0, 0],
+        [1.04, 0.86, 1]
+      );
+      // Belt outer front surface at R * 0.86 + tubeR = 0.1096 -> seat brass buckle cleanly on surface
+      addMesh(torsoGroup, createRoundedPanelGeo(0.026, 0.024, 0.012, 0.006, 0.003), brassMat, [0, 0.518, 0.108]);
+    } else if (isSanty) {
+      // Plush white fur skirt hem, fluffy shoulder capelet, coat trim + flush pom buttons + black belt & flush gold buckle
+      addMesh(
+        torsoGroup,
+        sculptClayGeo(new THREE.TorusGeometry(0.156, 0.022, 12, 26), 0.001),
+        whiteMat,
+        [0, 0.338, 0],
+        [Math.PI / 2, 0, 0],
+        [1.03, 0.87, 1]
+      );
+      addMesh(
+        torsoGroup,
+        sculptClayGeo(new THREE.CylinderGeometry(0.068, 0.13, 0.066, 24), 0.0009),
+        whiteMat,
+        [0, 0.695, 0.002],
+        undefined,
+        [1.06, 1, 0.86]
+      );
+      addMesh(
+        torsoGroup,
+        createRoundedPanelGeo(0.032, 0.17, 0.018, 0.01, 0.004),
+        whiteMat,
+        [0, 0.585, frontChestZ + 0.006]
+      );
+      addMesh(
+        torsoGroup,
+        new THREE.TorusGeometry(0.109, 0.016, 10, 24),
+        leatherDarkMat,
+        [0, 0.516, 0],
+        [Math.PI / 2, 0, 0],
+        [1.04, 0.86, 1]
+      );
+      addMesh(torsoGroup, createRoundedPanelGeo(0.03, 0.026, 0.012, 0.006, 0.003), brassMat, [0, 0.516, 0.108]);
+      for (const py of [0.625, 0.578]) {
+        addMesh(torsoGroup, new THREE.SphereGeometry(0.011, 10, 10), whiteMat, [0, py, frontChestZ + 0.016]);
+      }
+    } else if (isElfFemale) {
+      // Scalloped red-and-gold elf collar + jingle bell + brown belt with flush gold buckle
+      addMesh(
+        torsoGroup,
+        sculptClayGeo(new THREE.CylinderGeometry(0.056, 0.128, 0.062, 12), 0.0008),
+        secondaryMat,
+        [0, 0.694, 0.002],
+        undefined,
+        [1.06, 1, 0.86]
+      );
+      addMesh(torsoGroup, new THREE.SphereGeometry(0.014, 12, 12), brassMat, [0, 0.654, frontChestZ + 0.015]);
+      addMesh(
+        torsoGroup,
+        new THREE.TorusGeometry(0.109, 0.015, 10, 24),
+        buckleMat,
+        [0, 0.516, 0],
+        [Math.PI / 2, 0, 0],
+        [1.04, 0.86, 1]
+      );
+      addMesh(torsoGroup, createRoundedPanelGeo(0.028, 0.024, 0.012, 0.006, 0.003), brassMat, [0, 0.516, 0.107]);
+      addMesh(
+        torsoGroup,
+        new THREE.TorusGeometry(0.156, 0.014, 10, 24),
+        secondaryMat,
+        [0, 0.338, 0],
+        [Math.PI / 2, 0, 0],
+        [1.03, 0.87, 1]
       );
     }
   } else {
@@ -818,19 +1186,27 @@ export function buildAvatarRig3D(config: AvatarConfig): AvatarRig3D {
     );
 
     if (isStarterTank) {
-      addMesh(torsoGroup, new THREE.CylinderGeometry(0.05, 0.058, 0.052, 20), skinMat, [0, 0.708, 0.012]);
+      // Smooth contoured neck & shoulder-wrapping tank straps
+      addMesh(torsoGroup, new THREE.CylinderGeometry(0.048, 0.056, 0.048, 22), skinMat, [0, 0.71, 0.012]);
       addMesh(
         torsoGroup,
-        createRoundedPanelGeo(0.032, 0.054, 0.024, 0.01, 0.005),
+        new THREE.TorusGeometry(0.056, 0.01, 10, 22),
         primaryMat,
-        [-0.068, 0.704, 0.042]
+        [0, 0.692, 0.014],
+        [Math.PI / 2 + 0.22, 0, 0]
       );
-      addMesh(
-        torsoGroup,
-        createRoundedPanelGeo(0.032, 0.054, 0.024, 0.01, 0.005),
-        primaryMat,
-        [0.068, 0.704, 0.042]
-      );
+      for (const s of [-1, 1]) {
+        addClayStrand(
+          torsoGroup,
+          [
+            [s * 0.064, 0.668, 0.054],
+            [s * 0.072, 0.728, 0.008],
+            [s * 0.064, 0.668, -0.054],
+          ],
+          0.015,
+          primaryMat
+        );
+      }
       addMesh(
         torsoGroup,
         new THREE.CylinderGeometry(hipRadius * 1.03, hipRadius * 1.03, 0.024, 24),
@@ -839,34 +1215,74 @@ export function buildAvatarRig3D(config: AvatarConfig): AvatarRig3D {
         undefined,
         [1.02, 1, 0.82]
       );
-    } else if (outfitId === 'outfit_hoodie_apron' || outfitId === 'outfit_pastel_atelier') {
-      const apronMat = outfitId === 'outfit_hoodie_apron' ? secondaryMat : primaryMat;
-      const apronTrimMat = outfitId === 'outfit_hoodie_apron' ? clayMat('#D6C3A5', 0.8) : whiteMat;
-
-      if (outfitId === 'outfit_hoodie_apron') {
-        addMesh(
-          torsoGroup,
-          new THREE.TorusGeometry(0.078, 0.026, 10, 22),
-          primaryMat,
-          [0, 0.715, -0.014],
-          [Math.PI / 2 + 0.18, 0, 0]
-        );
-      } else {
-        addMesh(torsoGroup, new THREE.CylinderGeometry(0.092, 0.102, 0.068, 22), secondaryMat, [0, 0.675, 0]);
-      }
-
-      // Contoured front apron bib + lower wrap skirt + pocket
+    } else if (isStarterPolo) {
+      // Folded polo collar flaps + seamless extended placket + flush buttons
       addMesh(
         torsoGroup,
-        createRoundedPanelGeo(0.148, 0.2, 0.026, 0.022, 0.007),
+        new THREE.TorusGeometry(0.052, 0.013, 10, 22),
+        primaryMat,
+        [0, 0.722, 0.004],
+        [Math.PI / 2 + 0.14, 0, 0]
+      );
+      addMesh(
+        torsoGroup,
+        createRoundedPanelGeo(0.032, 0.104, 0.016, 0.008, 0.004),
+        secondaryMat,
+        [0, 0.672, frontChestZ + 0.005]
+      );
+      for (const s of [-1, 1]) {
+        addMesh(
+          torsoGroup,
+          createRoundedPanelGeo(0.036, 0.024, 0.012, 0.006, 0.003),
+          primaryMat,
+          [s * 0.025, 0.708, 0.054],
+          [0.34, s * -0.25, s * 0.28]
+        );
+      }
+      for (const by of [0.694, 0.664, 0.635]) {
+        addMesh(torsoGroup, new THREE.CylinderGeometry(0.006, 0.006, 0.006, 10), whiteMat, [0, by, frontChestZ + 0.014], [Math.PI / 2, 0, 0]);
+      }
+      addMesh(
+        torsoGroup,
+        new THREE.CylinderGeometry(hipRadius * 1.02, hipRadius * 1.02, 0.024, 24),
+        secondaryMat,
+        [0, 0.478, 0],
+        undefined,
+        [1.02, 1, 0.82]
+      );
+    } else if (outfitId === 'outfit_hoodie_apron') {
+      const apronMat = secondaryMat;
+      const apronTrimMat = clayMat('#D6C3A5', 0.8);
+
+      // Front hood collar + sculpted cozy back hood drape
+      addMesh(
+        torsoGroup,
+        new THREE.TorusGeometry(0.078, 0.026, 10, 22),
+        primaryMat,
+        [0, 0.715, -0.014],
+        [Math.PI / 2 + 0.18, 0, 0]
+      );
+      addMesh(
+        torsoGroup,
+        sculptClayGeo(new THREE.SphereGeometry(0.072, 18, 14), 0.0009),
+        primaryMat,
+        [0, 0.706, -0.068],
+        [-0.3, 0, 0],
+        [1.1, 0.56, 0.9]
+      );
+
+      // Contoured front apron bib + pocket
+      addMesh(
+        torsoGroup,
+        createRoundedPanelGeo(0.144, 0.2, 0.028, 0.022, 0.007),
         apronMat,
-        [0, 0.562, frontChestZ + 0.004]
+        [0, 0.562, frontChestZ + 0.002]
       );
       addMesh(
         torsoGroup,
         createRoundedPanelGeo(0.086, 0.056, 0.018, 0.014, 0.005),
         apronTrimMat,
-        [0, 0.515, frontChestZ + 0.016]
+        [0, 0.515, frontChestZ + 0.015]
       );
 
       // Real apron shoulder straps curving over shoulders and crossing in an X across the back
@@ -876,7 +1292,7 @@ export function buildAvatarRig3D(config: AvatarConfig): AvatarRig3D {
         addClayStrand(
           torsoGroup,
           [
-            [s * 0.052, 0.654, frontChestZ + 0.006],
+            [s * 0.052, 0.654, frontChestZ + 0.004],
             [s * 0.064, 0.728, 0.028],
             [s * 0.058, 0.716, -0.044],
             [0, 0.612, -frontChestZ - 0.009],
@@ -885,14 +1301,12 @@ export function buildAvatarRig3D(config: AvatarConfig): AvatarRig3D {
           0.0135,
           apronMat
         );
-        // Brass apron strap ring / stud on front bib
         addMesh(
           torsoGroup,
           new THREE.SphereGeometry(0.009, 10, 10),
           brassMat,
-          [s * 0.052, 0.648, frontChestZ + 0.016]
+          [s * 0.052, 0.648, frontChestZ + 0.015]
         );
-        // Waist tie wrapping around sides from front apron bib to back tie
         addClayStrand(
           torsoGroup,
           [
@@ -905,24 +1319,255 @@ export function buildAvatarRig3D(config: AvatarConfig): AvatarRig3D {
           apronMat
         );
       }
-      // Cute sculpted clay tie-bow at the center back waist
       addClayBow(torsoGroup, apronMat, [0, 0.504, backWaistZ - 0.015], 0.96, [0, Math.PI, 0]);
+    } else if (outfitId === 'outfit_street_cargo') {
+      // Olive overshirt folded collar + inner white tee + dual plackets with buttons + dual chest utility pockets
+      addMesh(
+        torsoGroup,
+        new THREE.TorusGeometry(0.054, 0.013, 10, 22),
+        primaryMat,
+        [0, 0.72, 0.003],
+        [Math.PI / 2 + 0.12, 0, 0]
+      );
+      for (const s of [-1, 1]) {
+        addMesh(
+          torsoGroup,
+          createRoundedPanelGeo(0.036, 0.024, 0.012, 0.006, 0.003),
+          primaryMat,
+          [s * 0.028, 0.706, 0.056],
+          [0.34, s * -0.24, s * 0.25]
+        );
+      }
+      addMesh(
+        torsoGroup,
+        createRoundedPanelGeo(0.052, 0.21, 0.022, 0.012, 0.004),
+        secondaryMat,
+        [0, 0.605, frontChestZ + 0.003]
+      );
+      for (const s of [-1, 1]) {
+        addMesh(
+          torsoGroup,
+          createRoundedPanelGeo(0.018, 0.205, 0.018, 0.006, 0.003),
+          primaryMat,
+          [s * 0.028, 0.602, frontChestZ + 0.007]
+        );
+        addMesh(
+          torsoGroup,
+          createRoundedPanelGeo(0.048, 0.052, 0.018, 0.01, 0.004),
+          clayMat('#495B44', 0.8, 0.006),
+          [s * 0.058, 0.61, frontChestZ + 0.011]
+        );
+        addMesh(
+          torsoGroup,
+          new THREE.CylinderGeometry(0.0055, 0.0055, 0.006, 10),
+          buckleMat,
+          [s * 0.058, 0.622, frontChestZ + 0.02],
+          [Math.PI / 2, 0, 0]
+        );
+      }
+      for (const [by, bz] of [
+        [0.665, frontChestZ + 0.015],
+        [0.605, frontChestZ + 0.015],
+        [0.545, frontChestZ + 0.017],
+      ]) {
+        addMesh(torsoGroup, new THREE.CylinderGeometry(0.006, 0.006, 0.006, 10), buckleMat, [0.028, by, bz], [Math.PI / 2, 0, 0]);
+      }
     } else if (outfitId === 'outfit_varsity') {
+      // Ribbed varsity collar + seamless snap placket + flush snap buttons + hem band
       addMesh(
         torsoGroup,
-        createRoundedPanelGeo(0.036, 0.215, 0.024, 0.012, 0.005),
+        new THREE.TorusGeometry(0.054, 0.013, 10, 22),
         secondaryMat,
-        [0, 0.6, frontChestZ + 0.006]
+        [0, 0.72, 0.003],
+        [Math.PI / 2 + 0.12, 0, 0]
       );
-      addMesh(torsoGroup, new THREE.SphereGeometry(0.021, 10, 10), brassMat, [0.056, 0.63, frontChestZ + 0.014]);
+      addMesh(
+        torsoGroup,
+        createRoundedPanelGeo(0.036, 0.228, 0.024, 0.012, 0.005),
+        secondaryMat,
+        [0, 0.604, frontChestZ + 0.005]
+      );
+      for (const [by, bz] of [
+        [0.678, frontChestZ + 0.016],
+        [0.632, frontChestZ + 0.016],
+        [0.586, frontChestZ + 0.017],
+        [0.54, frontChestZ + 0.019],
+      ]) {
+        addMesh(torsoGroup, new THREE.CylinderGeometry(0.0065, 0.0065, 0.006, 12), brassMat, [0, by, bz], [Math.PI / 2, 0, 0]);
+      }
+      addMesh(torsoGroup, new THREE.SphereGeometry(0.02, 10, 10), brassMat, [0.056, 0.63, frontChestZ + 0.012]);
+      addMesh(
+        torsoGroup,
+        new THREE.TorusGeometry(0.118, 0.014, 10, 24),
+        leatherDarkMat,
+        [0, 0.482, 0],
+        [Math.PI / 2, 0, 0],
+        [1.04, 0.82, 1]
+      );
     } else if (outfitId === 'outfit_arch_blazer') {
-      addMesh(torsoGroup, new THREE.CylinderGeometry(0.052, 0.064, 0.062, 20), secondaryMat, [0, 0.705, 0]);
+      // Crisp collared dress shirt + explicit 3D necktie (knot + tapered blade) + continuous blazer collar & notched lapels + buttons
+      const tieMat = clayMat('#6E2C36', 0.76, 0.006);
+      const lapelMat = clayMat('#343942', 0.8, 0.006);
+      // Blazer wrap-around collar behind neck
       addMesh(
         torsoGroup,
-        createRoundedPanelGeo(0.054, 0.175, 0.024, 0.014, 0.005),
-        secondaryMat,
-        [0, 0.605, frontChestZ + 0.004]
+        new THREE.TorusGeometry(0.058, 0.014, 10, 24),
+        lapelMat,
+        [0, 0.718, -0.002],
+        [Math.PI / 2 + 0.1, 0, 0]
       );
+      // Dress shirt neck stand & angled shirt collar wings
+      addMesh(torsoGroup, new THREE.CylinderGeometry(0.048, 0.058, 0.058, 22), secondaryMat, [0, 0.708, 0.002]);
+      for (const s of [-1, 1]) {
+        addMesh(
+          torsoGroup,
+          createRoundedPanelGeo(0.032, 0.024, 0.01, 0.005, 0.003),
+          secondaryMat,
+          [s * 0.022, 0.706, 0.052],
+          [0.36, s * -0.22, s * 0.34]
+        );
+      }
+      // White dress shirt front
+      addMesh(
+        torsoGroup,
+        createRoundedPanelGeo(0.052, 0.178, 0.022, 0.012, 0.005),
+        secondaryMat,
+        [0, 0.608, frontChestZ + 0.003]
+      );
+      // Explicit 3D Necktie: sculpted knot tucked under shirt collar + tapered blade resting flush on shirt front
+      addMesh(
+        torsoGroup,
+        createRoundedPanelGeo(0.022, 0.022, 0.014, 0.007, 0.004),
+        tieMat,
+        [0, 0.692, frontChestZ - 0.009],
+        [-0.22, 0, 0]
+      );
+      const tieShape = new THREE.Shape();
+      tieShape.moveTo(-0.008, 0.058);
+      tieShape.lineTo(0.008, 0.058);
+      tieShape.lineTo(0.015, -0.038);
+      tieShape.lineTo(0, -0.062);
+      tieShape.lineTo(-0.015, -0.038);
+      tieShape.closePath();
+      const tieGeo = new THREE.ExtrudeGeometry(tieShape, {
+        depth: 0.008,
+        bevelEnabled: true,
+        bevelThickness: 0.0025,
+        bevelSize: 0.0025,
+        bevelSegments: 2,
+      });
+      tieGeo.center();
+      tieGeo.computeVertexNormals();
+      addMesh(torsoGroup, sculptClayGeo(tieGeo, 0.0004), tieMat, [0, 0.625, frontChestZ + 0.016]);
+      // Notched blazer lapels framing shirt & tie seamlessly
+      for (const s of [-1, 1]) {
+        addMesh(
+          torsoGroup,
+          createRoundedPanelGeo(0.026, 0.172, 0.02, 0.008, 0.004),
+          lapelMat,
+          [s * 0.034, 0.622, frontChestZ + 0.008],
+          [0, 0, s * 0.1]
+        );
+      }
+      // Flush blazer closure buttons
+      for (const [by, bz] of [
+        [0.562, frontChestZ + 0.016],
+        [0.522, frontChestZ + 0.018],
+      ]) {
+        addMesh(torsoGroup, new THREE.CylinderGeometry(0.007, 0.007, 0.006, 12), leatherDarkMat, [0, by, bz], [Math.PI / 2, 0, 0]);
+      }
+    } else if (outfitId === 'outfit_male_trench') {
+      // Minimalist camel long trench coat + wrap collar + charcoal turtleneck + double-breasted buttons + flush belt buckle
+      addMesh(
+        torsoGroup,
+        new THREE.TorusGeometry(0.058, 0.014, 10, 24),
+        primaryMat,
+        [0, 0.718, -0.002],
+        [Math.PI / 2 + 0.1, 0, 0]
+      );
+      addMesh(torsoGroup, new THREE.CylinderGeometry(0.05, 0.062, 0.06, 20), secondaryMat, [0, 0.708, 0]);
+      addMesh(
+        torsoGroup,
+        createRoundedPanelGeo(0.05, 0.18, 0.022, 0.012, 0.005),
+        secondaryMat,
+        [0, 0.608, frontChestZ + 0.004]
+      );
+      for (const s of [-1, 1]) {
+        addMesh(
+          torsoGroup,
+          createRoundedPanelGeo(0.028, 0.172, 0.02, 0.008, 0.004),
+          primaryMat,
+          [s * 0.034, 0.62, frontChestZ + 0.008],
+          [0, 0, s * 0.1]
+        );
+      }
+      for (const [by, bz] of [
+        [0.585, frontChestZ + 0.015],
+        [0.548, frontChestZ + 0.017],
+      ]) {
+        for (const s of [-1, 1]) {
+          addMesh(torsoGroup, new THREE.CylinderGeometry(0.0065, 0.0065, 0.006, 12), clayMat('#6A4D33', 0.8), [s * 0.022, by, bz], [Math.PI / 2, 0, 0]);
+        }
+      }
+      addMesh(
+        torsoGroup,
+        createClayTorsoGeo(hipRadius * 0.98, hipRadius * 1.12, hipRadius * 1.24, 0.155),
+        primaryMat,
+        [0, 0.435, 0],
+        undefined,
+        [1.04, 1, 0.85]
+      );
+      addMesh(
+        torsoGroup,
+        new THREE.TorusGeometry(0.118, 0.014, 10, 24),
+        clayMat('#916D48', 0.8, 0.006),
+        [0, 0.515, 0],
+        [Math.PI / 2, 0, 0],
+        [1.04, 0.85, 1]
+      );
+      addMesh(torsoGroup, createRoundedPanelGeo(0.026, 0.022, 0.012, 0.005, 0.003), brassMat, [0, 0.515, 0.113]);
+    } else if (outfitId === 'outfit_ny_party') {
+      // Tailored unisex New Year midnight navy long coat + wrap champagne lapels + crisp shirt collar & bowtie + flush buttons
+      addMesh(
+        torsoGroup,
+        new THREE.TorusGeometry(0.056, 0.013, 10, 24),
+        secondaryMat,
+        [0, 0.718, -0.002],
+        [Math.PI / 2 + 0.1, 0, 0]
+      );
+      addMesh(
+        torsoGroup,
+        createClayTorsoGeo(hipRadius * 0.98, hipRadius * 1.12, hipRadius * 1.22, 0.155),
+        primaryMat,
+        [0, 0.435, 0],
+        undefined,
+        [1.04, 1, 0.85]
+      );
+      addMesh(torsoGroup, new THREE.CylinderGeometry(0.048, 0.058, 0.054, 20), whiteMat, [0, 0.708, 0.002]);
+      addMesh(
+        torsoGroup,
+        createRoundedPanelGeo(0.048, 0.175, 0.022, 0.012, 0.005),
+        whiteMat,
+        [0, 0.612, frontChestZ + 0.004]
+      );
+      addClayBow(torsoGroup, primaryMat, [0, 0.688, frontChestZ + 0.008], 0.84);
+      for (const s of [-1, 1]) {
+        addMesh(
+          torsoGroup,
+          createRoundedPanelGeo(0.022, 0.175, 0.022, 0.008, 0.004),
+          secondaryMat,
+          [s * 0.032, 0.618, frontChestZ + 0.008],
+          [0, 0, s * 0.08]
+        );
+      }
+      for (const [by, bz] of [
+        [0.562, frontChestZ + 0.015],
+        [0.512, frontChestZ + 0.018],
+      ]) {
+        for (const s of [-1, 1]) {
+          addMesh(torsoGroup, new THREE.CylinderGeometry(0.007, 0.007, 0.006, 10), secondaryMat, [s * 0.024, by, bz], [Math.PI / 2, 0, 0]);
+        }
+      }
     } else if (outfitId === 'outfit_xmas_knit') {
       addMesh(
         torsoGroup,
@@ -939,12 +1584,92 @@ export function buildAvatarRig3D(config: AvatarConfig): AvatarRig3D {
         [0, 0.71, 0.004],
         [Math.PI / 2 + 0.15, 0, 0]
       );
+      // Scarf tail rooted cleanly inside scarf ring
       addMesh(
         torsoGroup,
         new THREE.CapsuleGeometry(0.022, 0.105, 6, 10),
         secondaryMat,
-        [0.048, 0.615, frontChestZ + 0.016],
-        [0.15, 0, -0.18]
+        [0.044, 0.635, frontChestZ + 0.014],
+        [0.14, 0, -0.16]
+      );
+    } else if (isSanta) {
+      // Classic Male Santa crimson velvet coat + plush white fur trim + flush buttons + black belt & flush gold buckle
+      addMesh(
+        torsoGroup,
+        createClayTorsoGeo(hipRadius * 1.0, hipRadius * 1.12, hipRadius * 1.2, 0.15),
+        primaryMat,
+        [0, 0.435, 0],
+        undefined,
+        [1.04, 1, 0.85]
+      );
+      addMesh(
+        torsoGroup,
+        sculptClayGeo(new THREE.TorusGeometry(0.145, 0.02, 10, 24), 0.0009),
+        whiteMat,
+        [0, 0.365, 0],
+        [Math.PI / 2, 0, 0],
+        [1.04, 0.85, 1]
+      );
+      addMesh(
+        torsoGroup,
+        sculptClayGeo(new THREE.TorusGeometry(0.072, 0.024, 10, 24), 0.0009),
+        whiteMat,
+        [0, 0.716, 0.004],
+        [Math.PI / 2 + 0.14, 0, 0]
+      );
+      addMesh(
+        torsoGroup,
+        createRoundedPanelGeo(0.036, 0.25, 0.02, 0.014, 0.005),
+        whiteMat,
+        [0, 0.56, frontChestZ + 0.006]
+      );
+      for (const py of [0.642, 0.588]) {
+        addMesh(torsoGroup, new THREE.SphereGeometry(0.01, 10, 10), leatherDarkMat, [0, py, frontChestZ + 0.016]);
+      }
+      addMesh(
+        torsoGroup,
+        new THREE.TorusGeometry(0.118, 0.018, 10, 24),
+        leatherDarkMat,
+        [0, 0.515, 0],
+        [Math.PI / 2, 0, 0],
+        [1.05, 0.86, 1]
+      );
+      addMesh(torsoGroup, createRoundedPanelGeo(0.032, 0.028, 0.012, 0.006, 0.003), brassMat, [0, 0.515, 0.118]);
+    } else if (isElfMale) {
+      // Male Christmas Elf green tunic + scalloped red collar + brown belt & flush gold buckle
+      addMesh(
+        torsoGroup,
+        createClayTorsoGeo(hipRadius * 0.98, hipRadius * 1.14, hipRadius * 1.22, 0.135),
+        primaryMat,
+        [0, 0.438, 0],
+        undefined,
+        [1.03, 1, 0.84]
+      );
+      addMesh(
+        torsoGroup,
+        sculptClayGeo(new THREE.CylinderGeometry(0.056, 0.13, 0.064, 12), 0.0008),
+        secondaryMat,
+        [0, 0.694, 0.002],
+        undefined,
+        [1.08, 1, 0.86]
+      );
+      addMesh(torsoGroup, new THREE.SphereGeometry(0.014, 12, 12), brassMat, [0, 0.654, frontChestZ + 0.015]);
+      addMesh(
+        torsoGroup,
+        new THREE.TorusGeometry(0.118, 0.016, 10, 24),
+        buckleMat,
+        [0, 0.515, 0],
+        [Math.PI / 2, 0, 0],
+        [1.04, 0.85, 1]
+      );
+      addMesh(torsoGroup, createRoundedPanelGeo(0.028, 0.024, 0.012, 0.006, 0.003), brassMat, [0, 0.515, 0.115]);
+      addMesh(
+        torsoGroup,
+        new THREE.TorusGeometry(0.145, 0.014, 10, 24),
+        secondaryMat,
+        [0, 0.375, 0],
+        [Math.PI / 2, 0, 0],
+        [1.03, 0.85, 1]
       );
     }
   }
@@ -952,19 +1677,25 @@ export function buildAvatarRig3D(config: AvatarConfig): AvatarRig3D {
   // ==========================================================
   // 3. PROPORTIONED SMOOTH ARMS, CUFFS & CARTOON-CLAY HANDS
   // ==========================================================
+  const isShortSleeveOutfit =
+    isStarterPolo || isBjdRibbonDress || outfitId === 'outfit_french_blouse';
+
   const sleeveMat = isStarterTank
     ? skinMat
     : isClayOveralls
     ? shirtMat
     : outfitId === 'outfit_varsity' ||
       outfitId === 'outfit_overalls' ||
-      outfitId === 'outfit_pastel_atelier'
+      outfitId === 'outfit_pastel_atelier' ||
+      outfitId === 'outfit_french_blouse'
     ? secondaryMat
     : primaryMat;
 
+  const lowerArmMat = isShortSleeveOutfit ? skinMat : sleeveMat;
+
   const armRTop = isStarterTank ? 0.032 : 0.038;
-  const armRMid = isStarterTank ? 0.031 : 0.039;
-  const armRBot = isStarterTank ? 0.028 : 0.036;
+  const armRMid = isStarterTank ? 0.031 : isShortSleeveOutfit ? 0.032 : 0.039;
+  const armRBot = isStarterTank || isShortSleeveOutfit ? 0.028 : 0.036;
   const shoulderBulbGeo = sculptClayGeo(new THREE.SphereGeometry(armRTop + 0.004, 18, 14), 0.0006);
   const upperSleeveGeo = createSmoothSleeveGeo(armRTop, armRMid, armRMid * 0.96, 0.118);
   const elbowBulbGeo = sculptClayGeo(new THREE.SphereGeometry(armRMid * 0.95, 16, 12), 0.0005);
@@ -986,17 +1717,26 @@ export function buildAvatarRig3D(config: AvatarConfig): AvatarRig3D {
       [side * 0.01, -0.056, 0.004],
       [-0.04, 0, side * 0.12]
     );
+    if (isShortSleeveOutfit) {
+      addMesh(
+        arm,
+        sculptClayGeo(new THREE.TorusGeometry(0.035, 0.0085, 10, 20), 0.0005),
+        sleeveMat,
+        [side * 0.017, -0.104, 0.006],
+        [Math.PI / 2 - 0.04, side * 0.12, 0]
+      );
+    }
 
     // Articulated elbow joint pivot
     const forearm = new THREE.Group();
     forearm.position.set(side * 0.018, -0.112, 0.006);
     arm.add(forearm);
 
-    addMesh(forearm, elbowBulbGeo, sleeveMat, [0, 0, 0]);
+    addMesh(forearm, elbowBulbGeo, lowerArmMat, [0, 0, 0]);
     addMesh(
       forearm,
       lowerSleeveGeo,
-      sleeveMat,
+      lowerArmMat,
       [side * 0.009, -0.046, 0.004],
       [-0.06, 0, side * 0.12]
     );
@@ -1006,6 +1746,22 @@ export function buildAvatarRig3D(config: AvatarConfig): AvatarRig3D {
         forearm,
         wristCuffGeo,
         redCuffMat,
+        [side * 0.016, -0.092, 0.01],
+        [Math.PI / 2 - 0.06, side * 0.12, 0]
+      );
+    } else if (isSanta || isSanty) {
+      addMesh(
+        forearm,
+        wristCuffGeo,
+        whiteMat,
+        [side * 0.016, -0.092, 0.01],
+        [Math.PI / 2 - 0.06, side * 0.12, 0]
+      );
+    } else if (isElfMale || isElfFemale) {
+      addMesh(
+        forearm,
+        wristCuffGeo,
+        secondaryMat,
         [side * 0.016, -0.092, 0.01],
         [Math.PI / 2 - 0.06, side * 0.12, 0]
       );
@@ -1045,23 +1801,24 @@ export function buildAvatarRig3D(config: AvatarConfig): AvatarRig3D {
   bodyGroup.add(leftArm);
   bodyGroup.add(rightArm);
 
-  // Natural bent right arm pose whenever holding a hand prop (coffee, brush, sketchbook, etc.)
+  // Natural per-object bent left arm pose whenever holding a hand prop (coffee, brush, sketchbook, etc.)
   const hasUserHandItem = config.handItemId !== 'hand_none';
+  const handHoldPose = getHandHoldPose(config.handItemId);
   if (hasUserHandItem) {
-    rightArm.rotation.set(-0.18, 0, 0.06);
-    rightForearm.rotation.set(-1.12, 0, -0.22);
+    leftArm.rotation.set(handHoldPose.armX, 0, handHoldPose.armZ);
+    leftForearm.rotation.set(handHoldPose.forearmX, handHoldPose.forearmY, handHoldPose.forearmZ);
   }
 
   // ==========================================================
-  // 4. CARTOON-CLAY HAND PROPS + ACTIVITY PROPS (aligned to bent rightForearm hand)
+  // 4. CARTOON-CLAY HAND PROPS (LEFT HAND) + ACTIVITY PROPS (RIGHT HAND)
   // ==========================================================
   const propGroup = new THREE.Group();
-  propGroup.position.set(0.018, -0.13, 0.02);
+  propGroup.position.set(-0.018, -0.13, 0.02);
   if (config.handItemId === 'hand_brush') {
-    // Collinear paintbrush assembly in one subgroup so handle, metal ferrule & bristle tip connect flush
+    // Collinear paintbrush held naturally upward across left palm & curled fingers
     const brushGroup = new THREE.Group();
-    brushGroup.position.set(0.004, -0.004, 0.022);
-    brushGroup.rotation.set(0.95, 0, -0.22);
+    brushGroup.position.set(0.006, -0.002, 0.02);
+    brushGroup.rotation.set(0.92, 0, 0.24);
     // Rounded wood handle tail cap + tapered wooden shaft
     addMesh(brushGroup, new THREE.SphereGeometry(0.0075, 10, 10), clayMat(0xc58f5b, 0.76), [0, -0.077, 0]);
     addMesh(brushGroup, new THREE.CylinderGeometry(0.0105, 0.0075, 0.175, 16), clayMat(0xc58f5b, 0.76), [0, 0.01, 0]);
@@ -1072,16 +1829,18 @@ export function buildAvatarRig3D(config: AvatarConfig): AvatarRig3D {
     addMesh(brushGroup, new THREE.ConeGeometry(0.0126, 0.036, 16), clayMat(0xc95443, 0.76), [0, 0.149, 0]);
     propGroup.add(brushGroup);
   } else if (config.handItemId === 'hand_sketchbook') {
+    // Sketchbook cradled comfortably against left forearm & palm
     const bookGroup = new THREE.Group();
-    bookGroup.position.set(-0.006, 0.002, 0.036);
-    bookGroup.rotation.set(0.85, -0.25, 0.25);
+    bookGroup.position.set(0.014, 0.004, 0.036);
+    bookGroup.rotation.set(0.88, 0.24, -0.24);
     addMesh(bookGroup, createRoundedPanelGeo(0.125, 0.155, 0.024, 0.012, 0.004), clayMat(0xc95443, 0.8), [0, 0, 0]);
-    addMesh(bookGroup, createRoundedPanelGeo(0.106, 0.136, 0.016, 0.008, 0.003), whiteMat, [0.004, 0, 0.008]);
+    addMesh(bookGroup, createRoundedPanelGeo(0.106, 0.136, 0.016, 0.008, 0.003), whiteMat, [-0.004, 0, 0.008]);
     propGroup.add(bookGroup);
   } else if (config.handItemId === 'hand_stylus') {
+    // Drawing tablet held angled toward viewer/artist in left hand
     const tabGroup = new THREE.Group();
-    tabGroup.position.set(-0.01, 0.004, 0.04);
-    tabGroup.rotation.set(0.75, -0.22, 0.2);
+    tabGroup.position.set(0.016, 0.006, 0.042);
+    tabGroup.rotation.set(0.76, 0.2, -0.2);
     addMesh(tabGroup, createRoundedPanelGeo(0.145, 0.104, 0.016, 0.012, 0.004), clayMat(0x2d333d, 0.7), [0, 0, 0]);
     addMesh(
       tabGroup,
@@ -1096,25 +1855,27 @@ export function buildAvatarRig3D(config: AvatarConfig): AvatarRig3D {
     );
     propGroup.add(tabGroup);
   } else if (config.handItemId === 'hand_coffee') {
-    // Upright coffee cup inside curled fingers when forearm is bent upward
+    // Upright level coffee cup wrapped snugly in left fingers & thumb
     const coffeeGroup = new THREE.Group();
-    coffeeGroup.position.set(0.006, -0.004, 0.026);
-    coffeeGroup.rotation.set(1.3, 0, 0.16);
+    coffeeGroup.position.set(0.012, -0.006, 0.026);
+    coffeeGroup.rotation.set(1.36, 0, -0.15);
     addMesh(coffeeGroup, new THREE.CylinderGeometry(0.038, 0.03, 0.086, 18), clayMat(0xf5efe6, 0.76), [0, 0, 0]);
     addMesh(coffeeGroup, new THREE.CylinderGeometry(0.04, 0.039, 0.028, 18), clayMat(0x8c5e3c, 0.8), [0, -0.006, 0]);
     addMesh(coffeeGroup, new THREE.CylinderGeometry(0.041, 0.041, 0.015, 18), whiteMat, [0, 0.044, 0]);
     propGroup.add(coffeeGroup);
   } else if (config.handItemId === 'hand_camera') {
+    // Camera held upright & aiming forward at chest height
     const camGroup = new THREE.Group();
-    camGroup.position.set(-0.006, 0.002, 0.038);
-    camGroup.rotation.set(1.22, -0.18, 0.16);
+    camGroup.position.set(0.012, 0.004, 0.038);
+    camGroup.rotation.set(1.52, 0.14, -0.14);
     addMesh(camGroup, createRoundedPanelGeo(0.1, 0.068, 0.05, 0.012, 0.006), clayMat(0x28313d, 0.72), [0, 0, 0]);
     addMesh(camGroup, new THREE.CylinderGeometry(0.023, 0.023, 0.034, 16), clayMat(0x475569, 0.62), [0, 0, 0.032], [Math.PI / 2, 0, 0]);
     propGroup.add(camGroup);
   } else if (config.handItemId === 'hand_xmas_gift') {
+    // Gift box supported comfortably from underneath by left palm
     const giftGroup = new THREE.Group();
-    giftGroup.position.set(-0.004, 0.002, 0.044);
-    giftGroup.rotation.set(1.24, -0.22, 0.16);
+    giftGroup.position.set(0.012, 0.004, 0.056);
+    giftGroup.rotation.set(1.24, 0.18, -0.15);
     const giftRed = clayMat(0xd13b47, 0.78);
     const ribbonGold = clayMat(0xe5b842, 0.7);
     addMesh(giftGroup, createRoundedPanelGeo(0.102, 0.094, 0.102, 0.014, 0.006), giftRed, [0, 0, 0]);
@@ -1122,7 +1883,7 @@ export function buildAvatarRig3D(config: AvatarConfig): AvatarRig3D {
     addMesh(giftGroup, createRoundedPanelGeo(0.022, 0.098, 0.106, 0.006, 0.003), ribbonGold, [0, 0, 0]);
     propGroup.add(giftGroup);
   }
-  rightForearm.add(propGroup);
+  leftForearm.add(propGroup);
 
   // Activity-only Terracotta Watering Can
   const wateringCanGroup = new THREE.Group();
@@ -1347,12 +2108,15 @@ export function buildAvatarRig3D(config: AvatarConfig): AvatarRig3D {
   // ==========================================================
   // 6. SOFT FLUFFY TERRACOTTA-CLAY HAIR (Seamless crown joints + 12 styles)
   // ==========================================================
+  const isBeretHat =
+    config.headwearId === 'head_beret_pink' || config.headwearId === 'head_beret_navy';
   const isFullDomeHat =
     config.headwearId === 'head_santa_hat' ||
     config.headwearId === 'head_beanie_mustard' ||
     config.headwearId === 'head_cap_cobalt';
-  const crownTuckY = isFullDomeHat ? -0.014 : 0;
-  const crownScaleY = isFullDomeHat ? 0.88 : 0.955;
+  const hasCrownHat = isFullDomeHat || isBeretHat;
+  const crownTuckY = hasCrownHat ? -0.016 : 0;
+  const crownScaleY = hasCrownHat ? 0.86 : 0.955;
   // Primary upper skull hair cap (slightly tucked under full hats like Santa hat)
   addMesh(
     headGroup,
@@ -1595,12 +2359,12 @@ export function buildAvatarRig3D(config: AvatarConfig): AvatarRig3D {
       [0.05, hcY + 0.034, -0.114, 0.032],
     ];
     for (const [cx, cy, cz, cr] of curlPuffs) {
-      if (isFullDomeHat && cy > hcY + 0.1) continue;
+      if (hasCrownHat && cy > hcY + 0.092) continue;
       addMesh(
         headGroup,
         sculptClayGeo(new THREE.SphereGeometry(cr, 14, 12), 0.0012),
         hairMat,
-        [cx, cy + (isFullDomeHat ? -0.012 : 0), cz],
+        [cx, cy + (hasCrownHat ? -0.014 : 0), cz],
         undefined,
         [1.06, 0.92, 1.02]
       );
@@ -1611,20 +2375,20 @@ export function buildAvatarRig3D(config: AvatarConfig): AvatarRig3D {
       headGroup,
       sculptClayGeo(new THREE.SphereGeometry(0.104, 22, 16), 0.0009),
       hairMat,
-      [0, hcY + 0.098 + (isFullDomeHat ? -0.022 : 0), 0.002],
+      [0, hcY + 0.098 + (hasCrownHat ? -0.024 : 0), 0.002],
       [-0.2, 0, 0],
-      [1.04, isFullDomeHat ? 0.52 : 0.68, 1.1]
+      [1.04, hasCrownHat ? 0.5 : 0.68, 1.1]
     );
     const waveX = [-0.078, -0.044, -0.012, 0.02, 0.054, 0.082];
     waveX.forEach((wx, idx) => {
       const lift = 1 - Math.abs(wx) * 3.8;
-      const archY = hcY + 0.112 + Math.max(0, lift) * 0.028 + (isFullDomeHat ? -0.028 : 0);
+      const archY = hcY + 0.112 + Math.max(0, lift) * 0.028 + (hasCrownHat ? -0.032 : 0);
       addBangLock(
         [
           [wx * 0.88, hcY + 0.074 + (idx % 2) * 0.004, 0.092 - Math.abs(wx) * 0.25],
           [wx * 0.94, archY, 0.046],
-          [wx, hcY + 0.124 + (isFullDomeHat ? -0.032 : 0), -0.025],
-          [wx * 0.96, hcY + 0.094 + (isFullDomeHat ? -0.018 : 0), -0.096],
+          [wx, hcY + 0.124 + (hasCrownHat ? -0.036 : 0), -0.025],
+          [wx * 0.96, hcY + 0.094 + (hasCrownHat ? -0.02 : 0), -0.096],
         ],
         0.021,
         0.012
@@ -1844,7 +2608,7 @@ export function buildAvatarRig3D(config: AvatarConfig): AvatarRig3D {
         hairMat
       );
     }
-  } else if (config.hairStyleId === 'messy_short' && !isFullDomeHat) {
+  } else if (config.hairStyleId === 'messy_short' && !hasCrownHat) {
     addMesh(
       headGroup,
       sculptClayGeo(new THREE.ConeGeometry(0.042, 0.062, 12), 0.001),
@@ -1915,7 +2679,7 @@ export function buildAvatarRig3D(config: AvatarConfig): AvatarRig3D {
         hairMat
       );
     }
-  } else if (config.hairStyleId === 'bun' && !isFullDomeHat) {
+  } else if (config.hairStyleId === 'bun' && !hasCrownHat) {
     // Seamless flared hair-gather cone & swept-up strands connecting crown cap into the top bun
     addMesh(
       headGroup,
@@ -2021,21 +2785,21 @@ export function buildAvatarRig3D(config: AvatarConfig): AvatarRig3D {
 
     if (config.headwearId === 'head_beret_pink' || config.headwearId === 'head_beret_navy') {
       const beret = new THREE.Group();
-      beret.position.set(0.012, hcY + 0.12, -0.01);
-      beret.rotation.set(-0.08, 0, -0.18);
+      beret.position.set(0.01, hcY + 0.112, -0.01);
+      beret.rotation.set(-0.08, 0, -0.15);
       addMesh(
         beret,
-        sculptClayGeo(new THREE.SphereGeometry(0.136, 22, 16), 0.0012),
+        sculptClayGeo(new THREE.SphereGeometry(0.142, 24, 18), 0.0012),
         hatPrimary,
-        [0, 0.014, 0],
+        [0, 0.012, 0],
         undefined,
-        [1.04, 0.42, 0.98]
+        [1.06, 0.44, 1.02]
       );
       addMesh(
         beret,
-        new THREE.TorusGeometry(0.1, 0.014, 10, 22),
+        new THREE.TorusGeometry(0.115, 0.016, 10, 24),
         hatSecondary,
-        [0, -0.018, 0],
+        [0, -0.02, 0],
         [Math.PI / 2, 0, 0]
       );
       addMesh(beret, new THREE.CylinderGeometry(0.008, 0.01, 0.028, 10), hatSecondary, [0, 0.068, 0]);
@@ -2063,10 +2827,10 @@ export function buildAvatarRig3D(config: AvatarConfig): AvatarRig3D {
       const bandZ = 0.004;
       addMesh(
         headGroup,
-        new THREE.TorusGeometry(bandR, 0.0105, 12, 28, Math.PI),
+        new THREE.TorusGeometry(bandR, 0.0105, 12, 28, Math.PI * 1.06),
         hatPrimary,
         [0, bandY, bandZ],
-        undefined,
+        [0, 0, -Math.PI * 0.03],
         [1.02, 0.95, 1]
       );
 
@@ -2115,21 +2879,71 @@ export function buildAvatarRig3D(config: AvatarConfig): AvatarRig3D {
         headGroup.add(earAnchor);
       }
     } else if (config.headwearId === 'head_cap_cobalt') {
+      // Baseball cap crown dome + stitched base rim + seamless beveled crescent visor embedded into crown
       addMesh(
         headGroup,
-        new THREE.SphereGeometry(0.144, 22, 16, 0, Math.PI * 2, 0, Math.PI * 0.52),
+        sculptClayGeo(new THREE.SphereGeometry(0.145, 28, 20, 0, Math.PI * 2, 0, Math.PI * 0.54), 0.001),
         hatPrimary,
         [0, hcY + 0.046, -0.008],
         undefined,
-        [1.02, 0.95, 0.98]
+        [1.02, 0.96, 0.99]
       );
       addMesh(
         headGroup,
-        new THREE.CylinderGeometry(0.128, 0.14, 0.013, 22, 1, false, -Math.PI * 0.4, Math.PI * 0.8),
+        sculptClayGeo(new THREE.SphereGeometry(0.1465, 24, 16, -Math.PI * 0.22, Math.PI * 0.44, 0.12, Math.PI * 0.4), 0.0008),
         hatSecondary,
-        [0, hcY + 0.064, 0.074],
-        [0.15, 0, 0],
-        [1.0, 1, 0.98]
+        [0, hcY + 0.047, -0.007],
+        [0, Math.PI / 2, 0],
+        [1.025, 0.965, 0.995]
+      );
+      // Sweatband/piping ring sealing crown lower rim cleanly
+      addMesh(
+        headGroup,
+        new THREE.TorusGeometry(0.141, 0.0075, 10, 30),
+        hatPrimary,
+        [0, hcY + 0.052, -0.008],
+        [Math.PI / 2, 0, 0],
+        [1.02, 0.99, 1]
+      );
+      addMesh(headGroup, new THREE.SphereGeometry(0.014, 12, 12), hatSecondary, [0, hcY + 0.184, -0.008]);
+
+      // Crescent cap visor sculpted in XZ plane with inner radius inside the cap dome so zero seam gap appears
+      const visorShape = new THREE.Shape();
+      const innerR = 0.112;
+      const outerRx = 0.148;
+      const outerRz = 0.224;
+      const halfSpan = Math.PI * 0.42;
+      const segs = 22;
+      for (let i = 0; i <= segs; i++) {
+        const a = -halfSpan + (i / segs) * (halfSpan * 2);
+        const vx = Math.sin(a) * outerRx;
+        const vy = Math.cos(a) * outerRz;
+        if (i === 0) visorShape.moveTo(vx, vy);
+        else visorShape.lineTo(vx, vy);
+      }
+      for (let i = segs; i >= 0; i--) {
+        const a = -halfSpan + (i / segs) * (halfSpan * 2);
+        const vx = Math.sin(a) * innerR;
+        const vy = Math.cos(a) * innerR;
+        visorShape.lineTo(vx, vy);
+      }
+      visorShape.closePath();
+      const visorGeo = new THREE.ExtrudeGeometry(visorShape, {
+        depth: 0.008,
+        bevelEnabled: true,
+        bevelThickness: 0.003,
+        bevelSize: 0.003,
+        bevelSegments: 3,
+        curveSegments: 16,
+      });
+      visorGeo.rotateX(Math.PI / 2);
+      visorGeo.computeVertexNormals();
+      addMesh(
+        headGroup,
+        sculptClayGeo(visorGeo, 0.0004),
+        hatPrimary,
+        [0, hcY + 0.066, -0.006],
+        [0.14, 0, 0]
       );
     } else if (config.headwearId === 'head_santa_hat') {
       // Full-coverage plush dome + fluffy fur cuff + curved drooping tail & pom-pom (zero hair poking out)
@@ -2176,10 +2990,10 @@ export function buildAvatarRig3D(config: AvatarConfig): AvatarRig3D {
       const bandMat = clayMat(0xd13b47, 0.86);
       addMesh(
         headGroup,
-        new THREE.TorusGeometry(bandR, 0.0105, 12, 26, Math.PI),
+        new THREE.TorusGeometry(bandR, 0.0105, 12, 26, Math.PI * 1.06),
         bandMat,
         [0, bandY, bandZ],
-        undefined,
+        [0, 0, -Math.PI * 0.03],
         [1.02, 0.95, 1]
       );
       const antlerAlpha = 0.44;
@@ -2259,6 +3073,7 @@ export function buildAvatarRig3D(config: AvatarConfig): AvatarRig3D {
     propGroup,
     wateringCanGroup,
     sketchPencilGroup,
+    handHoldPose,
   };
 }
 

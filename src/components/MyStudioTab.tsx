@@ -452,7 +452,12 @@ export const MyStudioTab: React.FC<MyStudioTabProps> = ({
             <div className="flex-1 overflow-y-auto pr-1 mt-2.5">
               {drawerCategory === 'views' ? (
                 <div className="space-y-1.5">
-                  {WINDOW_VIEW_THEMES.map((view) => {
+                  {WINDOW_VIEW_THEMES.filter(
+                    (v) =>
+                      !v.isSeasonal ||
+                      holidayEvent.isActive ||
+                      state.ownedWindowViews.includes(v.id)
+                  ).map((view) => {
                     const isOwned = state.ownedWindowViews.includes(view.id);
                     const isActive = state.activeWindowViewId === view.id;
 

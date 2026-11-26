@@ -285,6 +285,208 @@ export const FashionIllustration: React.FC<FashionIllustrationProps> = ({
           </g>
         );
 
+      case 'outfit_starter_polo':
+        return (
+          <g>
+            {/* Khaki Shorts */}
+            <path
+              d="M27 45 L53 45 L56 64 L43 64 L41 53 L39 53 L37 64 L24 64 Z"
+              fill={secondary}
+              stroke="#2C1C13"
+              strokeWidth="1.8"
+              strokeLinejoin="round"
+            />
+            {/* Navy Polo Shirt */}
+            <path
+              d="M20 25 L30 20 L50 20 L60 25 L66 40 L57 43 L53 33 L53 47 L27 47 L27 33 L23 43 L14 40 Z"
+              fill={primary}
+              stroke="#2C1C13"
+              strokeWidth="1.8"
+              strokeLinejoin="round"
+            />
+            <path d="M30 20 L36 27 L40 22 L44 27 L50 20" fill={primary} stroke="#2C1C13" strokeWidth="1.5" strokeLinejoin="round" />
+            <rect x="38" y="23" width="4" height="10" rx="1.5" fill={secondary} stroke="#2C1C13" strokeWidth="1.1" />
+          </g>
+        );
+
+      case 'outfit_french_blouse':
+        return (
+          <g>
+            {/* Burgundy A-line skirt */}
+            <path
+              d="M28 45 L52 45 L58 67 L22 67 Z"
+              fill={primary}
+              stroke="#2C1C13"
+              strokeWidth="1.8"
+              strokeLinejoin="round"
+            />
+            {/* Cream puff-sleeve blouse */}
+            <path
+              d="M20 25 C16 28 15 36 21 38 L28 34 L28 46 L52 46 L52 34 L59 38 C65 36 64 28 60 25 L50 20 L30 20 Z"
+              fill={secondary}
+              stroke="#2C1C13"
+              strokeWidth="1.8"
+              strokeLinejoin="round"
+            />
+            <path d="M33 21 L40 25 L33 29 Z" fill={primary} stroke="#2C1C13" strokeWidth="1.1" />
+            <path d="M47 21 L40 25 L47 29 Z" fill={primary} stroke="#2C1C13" strokeWidth="1.1" />
+            <circle cx="40" cy="25" r="2" fill={primary} />
+            <circle cx="40" cy="34" r="1.4" fill="#A37D73" />
+            <circle cx="40" cy="40" r="1.4" fill="#A37D73" />
+          </g>
+        );
+
+      case 'outfit_fem_trench':
+        return (
+          <g>
+            {/* Pleated dark espresso skirt */}
+            <path
+              d="M27 50 L53 50 L58 67 L22 67 Z"
+              fill={secondary}
+              stroke="#2C1C13"
+              strokeWidth="1.7"
+              strokeLinejoin="round"
+            />
+            {/* Beige trench coat bodice */}
+            <path
+              d="M19 25 L31 20 L49 20 L61 25 L67 45 L58 48 L53 33 L53 53 L27 53 L27 33 L22 48 L13 45 Z"
+              fill={primary}
+              stroke="#2C1C13"
+              strokeWidth="1.8"
+              strokeLinejoin="round"
+            />
+            <path d="M34 20 L40 36 L46 20 Z" fill="#FFFDF9" stroke="#2C1C13" strokeWidth="1.2" />
+            <rect x="26" y="46" width="28" height="4.5" rx="1.5" fill={secondary} stroke="#2C1C13" strokeWidth="1.2" />
+            <rect x="37" y="45" width="6" height="6" rx="1" fill="#FBBF24" stroke="#2C1C13" strokeWidth="1.1" />
+          </g>
+        );
+
+      case 'outfit_street_cargo':
+        return (
+          <g>
+            {/* Cargo trousers */}
+            <path
+              d="M27 48 L53 48 L55 67 L43 67 L41 55 L39 55 L37 67 L25 67 Z"
+              fill="#4E5847"
+              stroke="#2C1C13"
+              strokeWidth="1.7"
+              strokeLinejoin="round"
+            />
+            {/* Olive canvas overshirt */}
+            <path
+              d="M19 25 L30 20 L50 20 L61 25 L67 45 L58 48 L53 33 L53 51 L27 51 L27 33 L22 48 L13 45 Z"
+              fill={primary}
+              stroke="#2C1C13"
+              strokeWidth="1.8"
+              strokeLinejoin="round"
+            />
+            <rect x="36" y="20" width="8" height="31" fill={secondary} stroke="#2C1C13" strokeWidth="1.3" />
+            <rect x="29" y="30" width="6" height="7" rx="1" fill="#495B44" stroke="#2C1C13" strokeWidth="1.1" />
+            <rect x="45" y="30" width="6" height="7" rx="1" fill="#495B44" stroke="#2C1C13" strokeWidth="1.1" />
+          </g>
+        );
+
+      case 'outfit_male_trench':
+        return (
+          <g>
+            {/* Dark charcoal turtleneck */}
+            <rect x="34" y="16" width="12" height="7" rx="2" fill={secondary} stroke="#2C1C13" strokeWidth="1.4" />
+            {/* Camel long trench coat */}
+            <path
+              d="M19 25 L31 20 L49 20 L61 25 L67 46 L58 49 L53 34 L55 67 L25 67 L27 34 L22 49 L13 46 Z"
+              fill={primary}
+              stroke="#2C1C13"
+              strokeWidth="1.8"
+              strokeLinejoin="round"
+            />
+            <path d="M34 21 L40 39 L46 21 Z" fill={secondary} stroke="#2C1C13" strokeWidth="1.2" />
+            <rect x="26" y="45" width="28" height="4.5" rx="1.5" fill="#7D5D3F" stroke="#2C1C13" strokeWidth="1.2" />
+            <rect x="37" y="44.5" width="6" height="5.5" rx="1" fill="#FBBF24" stroke="#2C1C13" strokeWidth="1.1" />
+          </g>
+        );
+
+      case 'outfit_xmas_santa':
+        return (
+          <g>
+            {/* Red Santa coat + trousers */}
+            <path
+              d="M19 25 L30 20 L50 20 L61 25 L67 45 L58 48 L53 33 L54 64 L26 64 L27 33 L22 48 L13 45 Z"
+              fill={primary}
+              stroke="#2C1C13"
+              strokeWidth="1.8"
+              strokeLinejoin="round"
+            />
+            {/* White fur collar, center placket & hem */}
+            <path d="M29 20 Q40 27 51 20" fill="none" stroke={secondary} strokeWidth="5.5" strokeLinecap="round" />
+            <rect x="37" y="23" width="6" height="36" fill={secondary} />
+            <rect x="25" y="57" width="30" height="6.5" rx="3" fill={secondary} stroke="#2C1C13" strokeWidth="1.2" />
+            {/* Black belt + gold buckle */}
+            <rect x="26" y="45" width="28" height="5" fill="#1F2937" stroke="#2C1C13" strokeWidth="1.2" />
+            <rect x="36" y="44" width="8" height="7" rx="1.5" fill="#FACC15" stroke="#2C1C13" strokeWidth="1.2" />
+          </g>
+        );
+
+      case 'outfit_xmas_santy':
+        return (
+          <g>
+            {/* Crimson flared Santy dress */}
+            <path
+              d="M19 25 L30 20 L50 20 L61 25 L66 44 L57 47 L52 34 L59 64 L21 64 L28 34 L23 47 L14 44 Z"
+              fill={primary}
+              stroke="#2C1C13"
+              strokeWidth="1.8"
+              strokeLinejoin="round"
+            />
+            {/* Fluffy white fur capelet & skirt hem */}
+            <path d="M26 22 Q40 32 54 22 L52 28 Q40 36 28 28 Z" fill={secondary} stroke="#2C1C13" strokeWidth="1.2" />
+            <rect x="20" y="58" width="40" height="6.5" rx="3.2" fill={secondary} stroke="#2C1C13" strokeWidth="1.3" />
+            {/* Belt + pom-poms */}
+            <rect x="28" y="44" width="24" height="4.5" fill="#1F2937" />
+            <rect x="37" y="43.5" width="6" height="5.5" rx="1" fill="#FACC15" stroke="#2C1C13" strokeWidth="1.1" />
+            <circle cx="40" cy="35" r="2" fill={secondary} />
+            <circle cx="40" cy="40" r="2" fill={secondary} />
+          </g>
+        );
+
+      case 'outfit_xmas_elf_male':
+        return (
+          <g>
+            {/* Emerald green elf tunic */}
+            <path
+              d="M19 25 L30 20 L50 20 L61 25 L67 45 L58 48 L53 33 L54 62 L47 58 L40 63 L33 58 L26 62 L27 33 L22 48 L13 45 Z"
+              fill={primary}
+              stroke="#2C1C13"
+              strokeWidth="1.8"
+              strokeLinejoin="round"
+            />
+            {/* Red zig-zag elf collar */}
+            <path d="M29 20 L34 31 L40 25 L46 31 L51 20 Z" fill={secondary} stroke="#2C1C13" strokeWidth="1.3" strokeLinejoin="round" />
+            <circle cx="40" cy="30" r="2.6" fill="#FACC15" stroke="#2C1C13" strokeWidth="1" />
+            {/* Belt */}
+            <rect x="26" y="46" width="28" height="4.5" fill="#7C4D30" stroke="#2C1C13" strokeWidth="1.2" />
+            <rect x="36.5" y="45" width="7" height="6.5" rx="1" fill="#FACC15" stroke="#2C1C13" strokeWidth="1.1" />
+          </g>
+        );
+
+      case 'outfit_xmas_elf_female':
+        return (
+          <g>
+            {/* Flared emerald elf dress */}
+            <path
+              d="M19 25 L30 20 L50 20 L61 25 L66 44 L57 47 L52 34 L59 64 L50 60 L40 65 L30 60 L21 64 L28 34 L23 47 L14 44 Z"
+              fill={primary}
+              stroke="#2C1C13"
+              strokeWidth="1.8"
+              strokeLinejoin="round"
+            />
+            {/* Red zig-zag collar + gold jingle bell */}
+            <path d="M29 20 L34 31 L40 25 L46 31 L51 20 Z" fill={secondary} stroke="#2C1C13" strokeWidth="1.3" strokeLinejoin="round" />
+            <circle cx="40" cy="30" r="2.6" fill="#FACC15" stroke="#2C1C13" strokeWidth="1" />
+            <rect x="28" y="44" width="24" height="4.5" fill="#7C4D30" stroke="#2C1C13" strokeWidth="1.2" />
+            <rect x="37" y="43.5" width="6" height="5.5" rx="1" fill="#FACC15" stroke="#2C1C13" strokeWidth="1.1" />
+          </g>
+        );
+
       case 'outfit_ny_party':
         return (
           <g>
